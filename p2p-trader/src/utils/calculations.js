@@ -1,58 +1,38 @@
 export function calcDealMath(deal) {
-  const buyAmount = parseFloat(deal.buyAmount) || 0;
+  const buy = parseFloat(deal.buyAmount) || 0;
   const buyRate = parseFloat(deal.buyRate) || 0;
-  const buyReward = parseFloat(deal.buyReward) || 0;
-  const sendAmount = parseFloat(deal.sendAmount) || 0;
-  const sellAmount = parseFloat(deal.sellAmount) || 0;
+  const buyRew = parseFloat(deal.buyReward) || 0;
+  const send = parseFloat(deal.sendAmount) || 0;
+  const sell = parseFloat(deal.sellAmount) || 0;
   const sellRate = parseFloat(deal.sellRate) || 0;
-  const sellReward = parseFloat(deal.sellReward) || 0;
+  const sellRew = parseFloat(deal.sellReward) || 0;
 
-  const cryptoBuyVolume = buyRate > 0 ? buyAmount / buyRate : 0;
-  const cryptoSellVolume = sellRate > 0 ? sellAmount / sellRate : 0;
+  const cryptoBuy = buyRate > 0 ? buy / buyRate : 0;
+  const cryptoSell = sellRate > 0 ? sell / sellRate : 0;
 
-  const effectiveBuyRate = buyRate * (1 + buyReward / 100);
-  const effectiveSellRate = sellRate * (1 + sellReward / 100);
+  const effBuyRate = buyRate > 0 ? buyRate * (1 + buyRew / 100) : 0;
+  const effSellRate = sellRate > 0 ? sellRate * (1 + sellRew / 100) : 0;
 
-  const buyAmountWithReward = cryptoBuyVolume * effectiveBuyRate;
-  const sellAmountWithReward = cryptoSellVolume * effectiveSellRate;
-
-  const imbalance = buyAmount - sendAmount - sellAmount;
-
-  let pnl = 0;
-  if (buyAmount > 0 && sellAmount > 0) {
-    const rewardFromBuyer = buyAmount * (buyReward / 100);
-    const rewardFromSeller = sellAmount * (sellReward / 100);
-    const spreadProfit = buyAmount - sellAmount - (sendAmount > 0 ? sendAmount - (buyAmount - sellAmount) : 0);
-    pnl = rewardFromBuyer + rewardFromSeller + (buyAmount - sendAmount - sellAmount);
-  }
-
-  const totalIn = buyAmount;
-  const totalOut = sendAmount + sellAmount;
-  const netPnL = totalIn - totalOut;
+  const imbalance = buy - send - sell;
+  const pnl = buy - (send > 0 ? send : sell) - sell + (send > 0 ? 0 : 0);
+  const netPnL = buy - send - sell;
 
   return {
-    cryptoBuyVolume: cryptoBuyVolume.toFixed(6),
-    cryptoSellVolume: cryptoSellVolume.toFixed(6),
-    effectiveBuyRate: effectiveBuyRate.toFixed(2),
-    effectiveSellRate: effectiveSellRate.toFixed(2),
+    cryptoBuy: cryptoBuy.toFixed(4),
+    cryptoSell: cryptoSell.toFixed(4),
+    effBuyRate: effBuyRate.toFixed(2),
+    effSellRate: effSellRate.toFixed(2),
     imbalance: imbalance.toFixed(2),
     pnl: netPnL.toFixed(2),
-    totalIn,
-    totalOut,
   };
 }
 
-export function formatMoney(amount, decimals = 2) {
-  const num = parseFloat(amount) || 0;
+export function fmt(n, dec = 0) {
+  const num = parseFloat(n) || 0;
   return new Intl.NumberFormat('ru-RU', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
   }).format(num);
-}
-
-export function formatCrypto(amount) {
-  const num = parseFloat(amount) || 0;
-  return num.toFixed(6);
 }
 
 export function generateId() {

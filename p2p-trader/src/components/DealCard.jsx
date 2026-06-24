@@ -1,270 +1,202 @@
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle, XCircle, Clock, TrendingUp, AlertTriangle, ChevronDown, ChevronUp, FileText, CreditCard, User, ArrowDownCircle, Send, ArrowUpCircle } from 'lucide-react';
-import { calcDealMath, formatMoney } from '../utils/calculations';
+import { Check, X, ChevronDown, ChevronUp, Upload, FileText } from 'lucide-react';
+import { calcDealMath, fmt } from '../utils/calculations';
 import { playAlertSound, sendDealExpiredNotification } from '../utils/sound';
 
-export default function DealCard({ deal, cards, onComplete, onCancel }) {
-  const [expanded, setExpanded] = useState(false);
+export default function DealCard({ deal, cards, onComplete, onCancel, onUpdate }) {
+  const [open, setOpen] = useState(false);
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, deal.expiresAt - Date.now()));
-  const [alerted, setAlerted] = useState(deal.expired || timeLeft === 0);
-  const intervalRef = useRef(null);
+  const notified = useRef(deal.expiresAt <= Date.now());
 
   useEffect(() => {
-    if (deal.status !== 'active') return;
-
-    intervalRef.current = setInterval(() => {
-      const remaining = Math.max(0, deal.expiresAt - Date.now());
-      setTimeLeft(remaining);
-
-      if (remaining === 0 && !alerted) {
-        setAlerted(true);
+    const tick = setInterval(() => {
+      const left = Math.max(0, deal.expiresAt - Date.now());
+      setTimeLeft(left);
+      if (left === 0 && !notified.current) {
+        notified.current = true;
         playAlertSound();
         sendDealExpiredNotification(deal.id);
-        clearInterval(intervalRef.current);
       }
     }, 500);
+    return () => clearInterval(tick);
+  }, [deal.expiresAt, deal.id]);
 
-    return () => clearInterval(intervalRef.current);
-  }, [deal.expiresAt, deal.status, alerted, deal.id]);
+  const math = calcDealMath(deal);
+  const imb = parseFloat(math.imbalance);
+  const pnl = parseFloat(math.pnl);
+  const expired = timeLeft === 0;
+  const critical = !expired && timeLeft < 60000;
+  const mins = Math.floor(timeLeft / 60000);
+  const secs = Math.floor((timeLeft % 60000) / 1000);
+  const timer = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  const pct = Math.max(0, (timeLeft / (deal.timerMinutes * 60000)) * 100);
+  const card = cards.find(c => c.id === deal.cardId);
 
-  const math = calcDealMath({
-    buyAmount: deal.stage1.buyAmount,
-    buyRate: deal.stage1.buyRate,
-    buyReward: deal.stage1.buyReward,
-    sendAmount: deal.stage2.sendAmount,
-    sellAmount: deal.stage3.sellAmount,
-    sellRate: deal.stage3.sellRate,
-    sellReward: deal.stage3.sellReward,
-  });
-
-  const imbalanceNum = parseFloat(math.imbalance);
-  const pnlNum = parseFloat(math.pnl);
-  const isExpired = timeLeft === 0;
-  const isCritical = timeLeft > 0 && timeLeft < 60000;
-
-  const card = cards.find(c => c.id === deal.stage2.cardId);
-
-  const minutes = Math.floor(timeLeft / 60000);
-  const seconds = Math.floor((timeLeft % 60000) / 1000);
-  const timerStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-  const progressPct = deal.timerMinutes > 0
-    ? Math.max(0, (timeLeft / (deal.timerMinutes * 60000)) * 100)
-    : 0;
+  function handleReceiptUpload(type, e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    onUpdate(deal.id, { [type]: file.name });
+  }
 
   return (
-    <div className={`glass-card rounded-xl overflow-hidden border transition-all duration-300 animate-fade-in ${
-      isExpired
-        ? 'border-red-500/40 neon-border-red'
-        : isCritical
-        ? 'border-orange-500/40'
-        : 'border-dark-400/60 hover:border-dark-300/60'
-    }`}>
-      {/* Progress bar */}
-      <div className="h-0.5 bg-dark-600 w-full">
+    <div className={`bg-[#161b22] border rounded-lg overflow-hidden fade-in ${expired ? 'border-red-500/50' : critical ? 'border-amber-500/40' : 'border-[#30363d]'}`}>
+      {/* Timer bar */}
+      <div className="h-0.5 bg-[#0d1117]">
         <div
-          className={`h-full transition-all duration-500 ${
-            isExpired ? 'bg-red-500' : isCritical ? 'bg-orange-500' : 'bg-blue-500'
-          }`}
-          style={{ width: `${progressPct}%` }}
+          className={`h-full transition-all duration-1000 ${expired ? 'bg-red-500' : critical ? 'bg-amber-500' : 'bg-blue-500'}`}
+          style={{ width: `${pct}%` }}
         />
       </div>
 
-      {/* Header */}
-      <div className="px-4 pt-3 pb-2">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-gray-500 text-xs font-mono">#{deal.id}</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-              isExpired
-                ? 'bg-red-500/20 text-red-400'
-                : isCritical
-                ? 'bg-orange-500/20 text-orange-400'
-                : 'bg-blue-500/20 text-blue-400'
-            }`}>
-              {isExpired ? 'Истекло!' : 'Активна'}
-            </span>
+      <div className="px-3 pt-2.5 pb-2">
+        {/* Top row: ID + timer + toggle */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[#8b949e] mono">#{deal.id}</span>
+            {expired && <span className="text-xs text-red-400 font-medium">Истекло!</span>}
           </div>
-
-          {/* Timer */}
-          <div className={`flex items-center gap-1.5 font-mono font-semibold text-sm ${
-            isExpired ? 'text-red-400 timer-critical' : isCritical ? 'text-orange-400' : 'text-gray-300'
-          }`}>
-            <Clock size={13} />
-            {timerStr}
+          <div className="flex items-center gap-2">
+            <span className={`mono text-sm font-medium ${expired ? 'text-red-400 timer-blink' : critical ? 'text-amber-400' : 'text-[#c9d1d9]'}`}>
+              {timer}
+            </span>
+            <button onClick={() => setOpen(v => !v)} className="text-[#8b949e] hover:text-white transition-colors">
+              {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
           </div>
         </div>
 
-        {/* Amounts row */}
-        <div className="grid grid-cols-3 gap-2 mt-3">
-          <AmountCell
-            icon={<ArrowDownCircle size={11} className="text-emerald-400" />}
-            label="Приём"
-            value={formatMoney(deal.stage1.buyAmount)}
-            color="emerald"
+        {/* Amounts */}
+        <div className="flex items-center gap-1 text-sm mb-2">
+          <AmtBadge label="Приём" value={fmt(deal.buyAmount)} color="emerald" />
+          <span className="text-[#484f58]">→</span>
+          <AmtBadge
+            label={card ? `${card.bankName} ••${card.lastFour}` : 'Отправка'}
+            value={deal.sendAmount ? fmt(deal.sendAmount) : '—'}
+            color={deal.sendAmount ? 'blue' : 'muted'}
           />
-          <AmountCell
-            icon={<Send size={11} className="text-blue-400" />}
-            label="Отправка"
-            value={formatMoney(deal.stage2.sendAmount)}
-            color="blue"
-          />
-          <AmountCell
-            icon={<ArrowUpCircle size={11} className="text-orange-400" />}
-            label="Выплата"
-            value={formatMoney(deal.stage3.sellAmount)}
-            color="orange"
-          />
+          <span className="text-[#484f58]">→</span>
+          <AmtBadge label="Выплата" value={fmt(deal.sellAmount)} color="orange" />
         </div>
 
-        {/* Imbalance & PnL */}
-        <div className="flex items-center gap-4 mt-2.5 pt-2.5 border-t border-dark-400/40">
-          <div className="flex items-center gap-1.5">
-            <AlertTriangle size={11} className={imbalanceNum === 0 ? 'text-gray-600' : imbalanceNum > 0 ? 'text-emerald-400' : 'text-red-400'} />
-            <span className="text-gray-500 text-xs">Дисбаланс:</span>
-            <span className={`font-mono text-xs font-semibold ${
-              imbalanceNum > 0 ? 'text-emerald-400' : imbalanceNum < 0 ? 'text-red-400' : 'text-gray-500'
-            }`}>
-              {imbalanceNum > 0 ? '+' : ''}{formatMoney(math.imbalance)} ₽
+        {/* Imbalance + PnL */}
+        <div className="flex items-center gap-4 text-xs">
+          <span className="text-[#8b949e]">
+            Дисбаланс:{' '}
+            <span className={`mono font-medium ${imb > 0 ? 'text-emerald-400' : imb < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>
+              {imb > 0 ? '+' : ''}{fmt(math.imbalance, 2)} ₽
             </span>
-          </div>
-          <div className="flex items-center gap-1.5 ml-auto">
-            <TrendingUp size={11} className={pnlNum >= 0 ? 'text-emerald-400' : 'text-red-400'} />
-            <span className="text-gray-500 text-xs">PnL:</span>
-            <span className={`font-mono text-xs font-semibold ${pnlNum >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {pnlNum >= 0 ? '+' : ''}{formatMoney(math.pnl)} ₽
+          </span>
+          <span className="text-[#8b949e]">
+            PnL:{' '}
+            <span className={`mono font-medium ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {pnl >= 0 ? '+' : ''}{fmt(math.pnl, 2)} ₽
             </span>
-          </div>
-          <button
-            onClick={() => setExpanded(e => !e)}
-            className="text-gray-500 hover:text-gray-300 transition-colors ml-1"
-          >
-            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+          </span>
         </div>
       </div>
 
-      {/* Expanded details */}
-      {expanded && (
-        <div className="px-4 pb-3 border-t border-dark-400/30 pt-3 space-y-3 animate-fade-in">
-          {/* Stage 1 */}
-          <StageDetails
-            icon={<ArrowDownCircle size={13} className="text-emerald-400" />}
-            title="Покупатель"
-            color="emerald"
-          >
-            <DetailRow label="Сумма" value={`${formatMoney(deal.stage1.buyAmount)} ₽`} mono />
-            <DetailRow label="Курс" value={`${formatMoney(deal.stage1.buyRate, 2)} ₽/USDT`} mono />
-            <DetailRow label="Награда" value={`${deal.stage1.buyReward}%`} mono />
-            <DetailRow label="Крипто" value={`${math.cryptoBuyVolume} USDT`} mono />
-            <DetailRow label="Реквизиты" value={deal.stage1.buyerRequisites || '—'} />
-            {deal.stage1.receiptName && (
-              <div className="flex items-center gap-1.5 text-blue-400 text-xs mt-1">
-                <FileText size={11} />
-                <span className="truncate">{deal.stage1.receiptName}</span>
-              </div>
-            )}
-          </StageDetails>
-
-          {/* Stage 2 */}
-          <StageDetails
-            icon={<Send size={13} className="text-blue-400" />}
-            title="Моя карта"
-            color="blue"
-          >
-            {card && (
-              <DetailRow
-                label="Карта"
-                value={`${card.bankName} •••• ${card.lastFour}`}
-                icon={<CreditCard size={11} />}
+      {/* Expanded */}
+      {open && (
+        <div className="border-t border-[#30363d] px-3 py-3 space-y-3 fade-in">
+          {/* Inline: fill in actual send */}
+          <div className="space-y-1.5">
+            <div className="text-xs text-[#8b949e] font-medium">Отправка с моей карты</div>
+            <div className="flex gap-2">
+              <select
+                value={deal.cardId}
+                onChange={e => onUpdate(deal.id, { cardId: e.target.value })}
+                className="flex-1 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm text-[#c9d1d9] focus:outline-none focus:border-blue-500"
+              >
+                <option value="">— Карта —</option>
+                {cards.map(c => (
+                  <option key={c.id} value={c.id}>{c.bankName} ••{c.lastFour} ({fmt(c.balance)} ₽)</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                value={deal.sendAmount}
+                onChange={e => onUpdate(deal.id, { sendAmount: e.target.value })}
+                placeholder="Сумма ₽"
+                className="w-32 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm mono text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-blue-500"
               />
-            )}
-            <DetailRow label="Отправлено" value={`${formatMoney(deal.stage2.sendAmount)} ₽`} mono />
-          </StageDetails>
+            </div>
+          </div>
 
-          {/* Stage 3 */}
-          <StageDetails
-            icon={<ArrowUpCircle size={13} className="text-orange-400" />}
-            title="Продавец"
-            color="orange"
-          >
-            <DetailRow label="Сумма" value={`${formatMoney(deal.stage3.sellAmount)} ₽`} mono />
-            <DetailRow label="Курс" value={`${formatMoney(deal.stage3.sellRate, 2)} ₽/USDT`} mono />
-            <DetailRow label="Награда" value={`${deal.stage3.sellReward}%`} mono />
-            <DetailRow label="Крипто" value={`${math.cryptoSellVolume} USDT`} mono />
-            <DetailRow label="Реквизиты" value={deal.stage3.sellerRequisites || '—'} />
-            {deal.stage3.receiptName && (
-              <div className="flex items-center gap-1.5 text-blue-400 text-xs mt-1">
-                <FileText size={11} />
-                <span className="truncate">{deal.stage3.receiptName}</span>
-              </div>
-            )}
-          </StageDetails>
+          {/* Details */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="space-y-1">
+              <div className="text-emerald-400/80 font-medium">Покупатель</div>
+              <Info label="Сумма" value={`${fmt(deal.buyAmount)} ₽`} />
+              <Info label="Курс" value={`${fmt(deal.buyRate, 2)} ₽`} />
+              <Info label="Награда" value={`${deal.buyReward || 0}%`} />
+              {deal.buyerReq && <Info label="Реквизиты" value={deal.buyerReq} />}
+            </div>
+            <div className="space-y-1">
+              <div className="text-orange-400/80 font-medium">Продавец</div>
+              <Info label="Сумма" value={`${fmt(deal.sellAmount)} ₽`} />
+              <Info label="Курс" value={`${fmt(deal.sellRate, 2)} ₽`} />
+              <Info label="Награда" value={`${deal.sellReward || 0}%`} />
+              {deal.sellerReq && <Info label="Реквизиты" value={deal.sellerReq} />}
+            </div>
+          </div>
+
+          {/* Receipts */}
+          <div className="flex gap-2">
+            <ReceiptBtn label="Чек покупателя" name={deal.buyReceipt} onChange={e => handleReceiptUpload('buyReceipt', e)} />
+            <ReceiptBtn label="Чек продавца" name={deal.sellReceipt} onChange={e => handleReceiptUpload('sellReceipt', e)} />
+          </div>
         </div>
       )}
 
       {/* Actions */}
-      <div className="px-4 pb-3 flex gap-2">
+      <div className="flex gap-1.5 px-3 pb-2.5">
         <button
-          onClick={() => onComplete(deal)}
-          className="btn-success text-xs py-2 px-3 flex-1 justify-center"
+          onClick={() => onComplete(deal.id)}
+          className="flex-1 bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs py-1.5 rounded flex items-center justify-center gap-1 transition-colors"
         >
-          <CheckCircle size={13} />
-          Успешно завершить
+          <Check size={12} /> Завершить
         </button>
         <button
-          onClick={() => onCancel(deal)}
-          className="btn-danger text-xs py-2 px-3 flex-1 justify-center"
+          onClick={() => onCancel(deal.id)}
+          className="flex-1 bg-[#0d1117] hover:bg-red-500/10 text-[#8b949e] hover:text-red-400 text-xs py-1.5 rounded border border-[#30363d] hover:border-red-500/30 flex items-center justify-center gap-1 transition-colors"
         >
-          <XCircle size={13} />
-          Отменить / Спор
+          <X size={12} /> Отменить
         </button>
       </div>
     </div>
   );
 }
 
-function AmountCell({ icon, label, value, color }) {
-  const bgMap = {
-    emerald: 'bg-emerald-500/10 border-emerald-500/20',
-    blue: 'bg-blue-500/10 border-blue-500/20',
-    orange: 'bg-orange-500/10 border-orange-500/20',
+function AmtBadge({ label, value, color }) {
+  const colors = {
+    emerald: 'text-emerald-400',
+    blue: 'text-blue-400',
+    orange: 'text-orange-400',
+    muted: 'text-[#8b949e]',
   };
   return (
-    <div className={`rounded-lg p-2 border ${bgMap[color]}`}>
-      <div className="flex items-center gap-1 mb-0.5">
-        {icon}
-        <span className="text-gray-500 text-xs">{label}</span>
-      </div>
-      <div className="font-mono text-white text-xs font-semibold">{value} ₽</div>
+    <div className="text-center">
+      <div className="text-[10px] text-[#8b949e] leading-none mb-0.5">{label}</div>
+      <div className={`mono font-medium text-xs ${colors[color]}`}>{value} ₽</div>
     </div>
   );
 }
 
-function StageDetails({ icon, title, color, children }) {
-  const borderMap = {
-    emerald: 'border-l-emerald-500/50',
-    blue: 'border-l-blue-500/50',
-    orange: 'border-l-orange-500/50',
-  };
+function Info({ label, value }) {
   return (
-    <div className={`bg-dark-700/40 rounded-lg p-3 border-l-2 ${borderMap[color]}`}>
-      <div className="flex items-center gap-1.5 mb-2">
-        {icon}
-        <span className="text-gray-400 text-xs font-medium">{title}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-        {children}
-      </div>
+    <div className="flex gap-1 items-baseline">
+      <span className="text-[#8b949e] shrink-0">{label}:</span>
+      <span className="text-[#c9d1d9] mono break-all">{value}</span>
     </div>
   );
 }
 
-function DetailRow({ label, value, mono, icon }) {
+function ReceiptBtn({ label, name, onChange }) {
   return (
-    <div className="flex items-center gap-1">
-      <span className="text-gray-600 text-xs">{label}:</span>
-      <span className={`text-gray-300 text-xs ${mono ? 'font-mono' : ''} truncate`}>{value}</span>
-    </div>
+    <label className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded border border-dashed border-[#30363d] hover:border-blue-500/40 cursor-pointer transition-colors text-xs text-[#8b949e] hover:text-blue-400">
+      <input type="file" accept=".pdf,image/*" onChange={onChange} className="hidden" />
+      {name ? <FileText size={11} className="text-blue-400 shrink-0" /> : <Upload size={11} className="shrink-0" />}
+      <span className="truncate">{name || label}</span>
+    </label>
   );
 }

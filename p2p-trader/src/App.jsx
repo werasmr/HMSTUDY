@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import CardsPanel from './components/CardsPanel';
 import DealForm from './components/DealForm';
@@ -8,154 +8,100 @@ import { calcDealMath, generateId } from './utils/calculations';
 import { DEMO_CARDS, DEMO_DEALS } from './utils/demoData';
 import { requestNotificationPermission } from './utils/sound';
 
-function loadInitialCards() {
-  const saved = storage.getCards();
-  return saved ?? DEMO_CARDS;
-}
-
-function loadInitialDeals() {
-  const saved = storage.getDeals();
-  if (saved) return saved;
-  return DEMO_DEALS;
-}
-
 export default function App() {
-  const [cards, setCards] = useState(loadInitialCards);
-  const [deals, setDeals] = useState(loadInitialDeals);
-  const [archivedDeals, setArchivedDeals] = useState(() => storage.getArchivedDeals());
+  const [cards, setCards] = useState(() => storage.getCards() ?? DEMO_CARDS);
+  const [deals, setDeals] = useState(() => storage.getDeals() ?? DEMO_DEALS);
+  const [archived, setArchived] = useState(() => storage.getArchivedDeals());
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => { storage.saveCards(cards); }, [cards]);
   useEffect(() => { storage.saveDeals(deals); }, [deals]);
-  useEffect(() => { storage.saveArchivedDeals(archivedDeals); }, [archivedDeals]);
+  useEffect(() => { storage.saveArchivedDeals(archived); }, [archived]);
+  useEffect(() => { requestNotificationPermission(); }, []);
 
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
-
-  const handleAddCard = useCallback((cardData) => {
-    setCards(prev => [...prev, { id: 'card-' + generateId(), ...cardData }]);
-  }, []);
-
-  const handleUpdateCard = useCallback((id, cardData) => {
-    setCards(prev => prev.map(c => c.id === id ? { ...c, ...cardData } : c));
-  }, []);
-
-  const handleDeleteCard = useCallback((id) => {
+  function addCard(data) {
+    setCards(prev => [...prev, { id: 'c' + generateId(), ...data }]);
+  }
+  function updateCard(id, data) {
+    setCards(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+  }
+  function deleteCard(id) {
     setCards(prev => prev.filter(c => c.id !== id));
-  }, []);
+  }
 
-  const handleNewDeal = useCallback((deal) => {
+  function addDeal(deal) {
     setDeals(prev => [...prev, deal]);
-  }, []);
+  }
 
-  const handleCompleteDeal = useCallback((deal) => {
-    const math = calcDealMath({
-      buyAmount: deal.stage1.buyAmount,
-      buyRate: deal.stage1.buyRate,
-      buyReward: deal.stage1.buyReward,
-      sendAmount: deal.stage2.sendAmount,
-      sellAmount: deal.stage3.sellAmount,
-      sellRate: deal.stage3.sellRate,
-      sellReward: deal.stage3.sellReward,
+  function updateDeal(id, patch) {
+    setDeals(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d));
+  }
+
+  function completeDeal(dealId) {
+    setDeals(prev => {
+      const deal = prev.find(d => d.id === dealId);
+      if (!deal) return prev;
+
+      const send = parseFloat(deal.sendAmount) || 0;
+      if (send > 0 && deal.cardId) {
+        setCards(c => c.map(card =>
+          card.id === deal.cardId
+            ? { ...card, balance: Math.max(0, card.balance - send) }
+            : card
+        ));
+      }
+
+      setArchived(a => [...a, { ...deal, status: 'completed', closedAt: Date.now() }]);
+      return prev.filter(d => d.id !== dealId);
     });
+  }
 
-    const sendAmount = parseFloat(deal.stage2.sendAmount) || 0;
-    if (sendAmount > 0 && deal.stage2.cardId) {
-      setCards(prev => prev.map(c =>
-        c.id === deal.stage2.cardId
-          ? { ...c, balance: Math.max(0, c.balance - sendAmount) }
-          : c
-      ));
-    }
-
-    const archived = {
-      ...deal,
-      status: 'completed',
-      closeReason: 'completed',
-      closedAt: Date.now(),
-    };
-
-    setDeals(prev => prev.filter(d => d.id !== deal.id));
-    setArchivedDeals(prev => [...prev, archived]);
-  }, []);
-
-  const handleCancelDeal = useCallback((deal) => {
-    const archived = {
-      ...deal,
-      status: 'cancelled',
-      closeReason: 'cancelled',
-      closedAt: Date.now(),
-    };
-    setDeals(prev => prev.filter(d => d.id !== deal.id));
-    setArchivedDeals(prev => [...prev, archived]);
-  }, []);
+  function cancelDeal(dealId) {
+    setDeals(prev => {
+      const deal = prev.find(d => d.id === dealId);
+      if (!deal) return prev;
+      setArchived(a => [...a, { ...deal, status: 'cancelled', closedAt: Date.now() }]);
+      return prev.filter(d => d.id !== dealId);
+    });
+  }
 
   const stats = (() => {
-    const completedToday = archivedDeals.filter(d => {
-      if (d.closeReason !== 'completed') return false;
-      const today = new Date();
-      const closed = new Date(d.closedAt);
-      return closed.toDateString() === today.toDateString();
-    });
-
-    let totalPnL = 0;
-    let totalVolume = 0;
-
-    completedToday.forEach(deal => {
-      const math = calcDealMath({
-        buyAmount: deal.stage1.buyAmount,
-        buyRate: deal.stage1.buyRate,
-        buyReward: deal.stage1.buyReward,
-        sendAmount: deal.stage2.sendAmount,
-        sellAmount: deal.stage3.sellAmount,
-        sellRate: deal.stage3.sellRate,
-        sellReward: deal.stage3.sellReward,
-      });
-      totalPnL += parseFloat(math.pnl) || 0;
-      totalVolume += (parseFloat(deal.stage1.buyAmount) || 0) + (parseFloat(deal.stage3.sellAmount) || 0);
-    });
-
-    deals.forEach(deal => {
-      totalVolume += (parseFloat(deal.stage1.buyAmount) || 0) + (parseFloat(deal.stage3.sellAmount) || 0);
-    });
-
+    const today = new Date().toDateString();
+    const todayArchived = archived.filter(d =>
+      d.status === 'completed' && new Date(d.closedAt).toDateString() === today
+    );
+    const pnl = todayArchived.reduce((sum, d) => {
+      const m = calcDealMath(d);
+      return sum + parseFloat(m.pnl);
+    }, 0);
+    const volume = [...deals, ...archived].reduce((sum, d) => {
+      return sum + (parseFloat(d.buyAmount) || 0) + (parseFloat(d.sellAmount) || 0);
+    }, 0);
     return {
-      totalPnL,
-      totalVolume,
-      activeCount: deals.filter(d => d.status === 'active').length,
-      completedCount: completedToday.length,
+      pnl,
+      volume,
+      active: deals.length,
+      completed: todayArchived.length,
     };
   })();
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9]">
       <Header stats={stats} />
-
-      <main className="max-w-screen-2xl mx-auto px-4 py-6 space-y-5">
-        <CardsPanel
-          cards={cards}
-          onAddCard={handleAddCard}
-          onUpdateCard={handleUpdateCard}
-          onDeleteCard={handleDeleteCard}
-        />
-
+      <main className="max-w-4xl mx-auto px-4 py-5 space-y-4">
+        <CardsPanel cards={cards} onAdd={addCard} onUpdate={updateCard} onDelete={deleteCard} />
         <DealsJournal
           deals={deals}
-          archivedDeals={archivedDeals}
+          archived={archived}
           cards={cards}
-          onComplete={handleCompleteDeal}
-          onCancel={handleCancelDeal}
+          onComplete={completeDeal}
+          onCancel={cancelDeal}
+          onUpdate={updateDeal}
           onNewDeal={() => setShowForm(true)}
         />
       </main>
-
       {showForm && (
-        <DealForm
-          cards={cards}
-          onClose={() => setShowForm(false)}
-          onSubmit={handleNewDeal}
-        />
+        <DealForm cards={cards} onClose={() => setShowForm(false)} onSubmit={addDeal} />
       )}
     </div>
   );
