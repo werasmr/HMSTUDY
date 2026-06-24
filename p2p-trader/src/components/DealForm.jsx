@@ -13,7 +13,6 @@ export default function DealForm({ onClose, onSubmit }) {
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
 
   const math = calcDealMath({ ...f, sendAmount: '' });
-  const imb = parseFloat(math.imbalance);
   const pnl = parseFloat(math.pnl);
 
   function submit(e) {
@@ -126,17 +125,12 @@ export default function DealForm({ onClose, onSubmit }) {
           {(f.buyAmount || f.sellAmount) && (
             <div className="flex items-center gap-4 text-sm border-t border-[#30363d] pt-3">
               <div className="flex items-center gap-1.5">
-                <span className="text-[#8b949e]">Дисбаланс:</span>
-                <span className={`mono font-medium ${imb > 0 ? 'text-emerald-400' : imb < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>
-                  {imb > 0 ? '+' : ''}{fmt(math.imbalance, 2)} ₽
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#8b949e]">PnL:</span>
-                <span className={`mono font-medium ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <span className="text-[#8b949e]">PnL (спред):</span>
+                <span className={`mono font-semibold ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {pnl >= 0 ? '+' : ''}{fmt(math.pnl, 2)} ₽
                 </span>
               </div>
+              <span className="text-[#484f58] text-xs">(приём − выплата)</span>
             </div>
           )}
 

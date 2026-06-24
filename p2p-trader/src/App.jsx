@@ -4,7 +4,7 @@ import CardsPanel from './components/CardsPanel';
 import DealForm from './components/DealForm';
 import DealsJournal from './components/DealsJournal';
 import { storage } from './utils/storage';
-import { calcDealMath, generateId } from './utils/calculations';
+import { generateId } from './utils/calculations';
 import { DEMO_CARDS, DEMO_DEALS } from './utils/demoData';
 import { requestNotificationPermission } from './utils/sound';
 
@@ -65,30 +65,25 @@ export default function App() {
     });
   }
 
+  // PnL = buyAmount - sellAmount per completed deal today
   const stats = (() => {
     const today = new Date().toDateString();
-    const todayArchived = archived.filter(d =>
+    const todayDone = archived.filter(d =>
       d.status === 'completed' && new Date(d.closedAt).toDateString() === today
     );
-    const pnl = todayArchived.reduce((sum, d) => {
-      const m = calcDealMath(d);
-      return sum + parseFloat(m.pnl);
-    }, 0);
-    const volume = [...deals, ...archived].reduce((sum, d) => {
-      return sum + (parseFloat(d.buyAmount) || 0) + (parseFloat(d.sellAmount) || 0);
-    }, 0);
-    return {
-      pnl,
-      volume,
-      active: deals.length,
-      completed: todayArchived.length,
-    };
+    const pnl = todayDone.reduce((s, d) =>
+      s + (parseFloat(d.buyAmount) || 0) - (parseFloat(d.sellAmount) || 0), 0
+    );
+    const volume = [...deals, ...archived].reduce((s, d) =>
+      s + (parseFloat(d.buyAmount) || 0), 0
+    );
+    return { pnl, volume, active: deals.length, completed: todayDone.length };
   })();
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9]">
       <Header stats={stats} />
-      <main className="max-w-4xl mx-auto px-4 py-5 space-y-4">
+      <main className="max-w-3xl mx-auto px-4 py-5 space-y-5">
         <CardsPanel cards={cards} onAdd={addCard} onUpdate={updateCard} onDelete={deleteCard} />
         <DealsJournal
           deals={deals}
