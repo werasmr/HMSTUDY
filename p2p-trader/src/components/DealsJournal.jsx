@@ -71,7 +71,7 @@ export default function DealsJournal({ routes, archived, cards, onComplete, onCa
 function ArchiveRow({ deal, cards }) {
   const [open, setOpen] = useState(false);
   const math = calcRouteMath(deal);
-  const pnl = math.pnl;
+  const pnl = math.totalProfit;
   const card = cards.find(c => c.id === deal.topUpCardId);
   const done = deal.status === 'completed';
   const time = deal.closedAt ? new Date(deal.closedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
@@ -98,9 +98,10 @@ function ArchiveRow({ deal, cards }) {
         <div className="mt-2 pt-2 border-t border-[#30363d] grid grid-cols-2 sm:grid-cols-4 gap-2 fade-in">
           <MiniRow label="Банк продавца" value={deal.sellerBank} />
           <MiniRow label="Карта продавца" value={deal.sellerCard} />
-          <MiniRow label="Крипта входов" value={`${math.totalInputCrypto.toFixed(6)} USDT`} />
-          <MiniRow label="Крипта выплаты" value={`${math.payoutCrypto.toFixed(6)} USDT`} />
-          <MiniRow label="Остаток" value={`${fmt(math.remaining, 2)} ₽`} />
+          <MiniRow label="Входы $" value={`${math.totalInputDollar.toFixed(4)} $`} />
+          <MiniRow label="Выход $" value={`${math.outputDollar.toFixed(4)} $`} />
+          <MiniRow label="Остаток $" value={`${math.remainingDollar.toFixed(4)} $`} />
+          <MiniRow label="Доплата" value={`${fmt(math.topUpRub, 2)} ₽`} />
           <MiniRow label="Карта доплаты" value={card ? `${card.bankName} ••${card.lastFour}` : '—'} />
         </div>
       )}

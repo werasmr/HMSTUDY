@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Send } from 'lucide-react';
-import { generateId, payoutCrypto } from '../utils/calculations';
+import { generateId, outputDollar } from '../utils/calculations';
 
 const EMPTY = {
   amount: '',
@@ -13,7 +13,7 @@ const EMPTY = {
 export default function DealForm({ onClose, onSubmit }) {
   const [f, setF] = useState(EMPTY);
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
-  const crypto = payoutCrypto(f);
+  const outputUsd = outputDollar(f);
 
   function submit(e) {
     e.preventDefault();
@@ -62,10 +62,10 @@ export default function DealForm({ onClose, onSubmit }) {
 
           {(f.amount || f.rate) && (
             <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-              <div className="text-xs text-[#8b949e] mb-1">Крипта выплаты</div>
-              <div className="text-lg font-bold mono text-white">{crypto.toFixed(6)} USDT</div>
+              <div className="text-xs text-[#8b949e] mb-1">Выход в долларах</div>
+              <div className="text-lg font-bold mono text-white">{outputUsd.toFixed(4)} $</div>
               <div className="text-[11px] text-[#484f58] mt-1">
-                Сумма × (1 + награда / 100) / курс
+                Сумма выплаты / курс выплаты
               </div>
             </div>
           )}

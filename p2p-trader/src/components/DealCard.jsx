@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, X, Plus, Upload, Loader2, AlertCircle, CheckCircle2, ArrowDown, CreditCard } from 'lucide-react';
-import { calcRouteMath, fmt, generateId, inputCrypto, payoutCrypto } from '../utils/calculations';
+import { calcRouteMath, fmt, generateId, inputDollar, outputDollar } from '../utils/calculations';
 import { verifyReceiptAmount } from '../utils/pdfReceipt';
 
 export default function DealCard({ deal, cards, onComplete, onCancel, onUpdate }) {
@@ -77,9 +77,9 @@ export default function DealCard({ deal, cards, onComplete, onCancel, onUpdate }
             <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full font-semibold uppercase">Выплата</span>
           </div>
           <div className="text-right">
-            <div className="text-[10px] text-[#8b949e] uppercase tracking-wider">PnL маршрута</div>
-            <div className={`text-2xl font-black mono ${math.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {math.pnl >= 0 ? '+' : ''}{fmt(math.pnl, 2)} ₽
+            <div className="text-[10px] text-[#8b949e] uppercase tracking-wider">Общая прибыль</div>
+            <div className={`text-3xl font-black mono ${math.totalProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {math.totalProfit >= 0 ? '+' : ''}{fmt(math.totalProfit, 2)} ₽
             </div>
           </div>
         </div>
@@ -87,7 +87,22 @@ export default function DealCard({ deal, cards, onComplete, onCancel, onUpdate }
         <div className="grid grid-cols-3 gap-3">
           <Metric label="Сумма выплаты" value={`${fmt(deal.amount)} ₽`} tone="orange" />
           <Metric label="Курс выплаты" value={`${fmt(deal.rate, 2)} ₽`} />
-          <Metric label="Крипта выплаты" value={`${payoutCrypto(deal).toFixed(6)} USDT`} />
+          <Metric label="Выход в долларах" value={`${outputDollar(deal).toFixed(4)} $`} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Metric
+            label="Остаток в долларах"
+            value={`${math.remainingDollar > 0 ? '' : '+'}${Math.abs(math.remainingDollar).toFixed(4)} $`}
+            tone={math.remainingDollar > 0 ? 'amber' : 'emerald'}
+            large
+          />
+          <Metric
+            label="Общая прибыль в рублях"
+            value={`${math.totalProfit >= 0 ? '+' : ''}${fmt(math.totalProfit, 2)} ₽`}
+            tone={math.totalProfit >= 0 ? 'emerald' : 'red'}
+            large
+          />
         </div>
 
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
@@ -100,15 +115,15 @@ export default function DealCard({ deal, cards, onComplete, onCancel, onUpdate }
 
         <div className="grid grid-cols-3 gap-3">
           <Metric label="Входы всего" value={`${fmt(math.totalInputAmount)} ₽`} tone="emerald" />
-          <Metric label="Остаток" value={`${math.remaining > 0 ? '' : '+'}${fmt(Math.abs(math.remaining))} ₽`} tone={math.remaining > 0 ? 'amber' : 'emerald'} />
-          <Metric label="Крипта входов" value={`${math.totalInputCrypto.toFixed(6)} USDT`} tone="emerald" />
+          <Metric label="Входы в долларах" value={`${math.totalInputDollar.toFixed(4)} $`} tone="emerald" />
+          <Metric label="Профит входов" value={`${math.inputRewardProfit >= 0 ? '+' : ''}${fmt(math.inputRewardProfit, 2)} ₽`} tone={math.inputRewardProfit >= 0 ? 'emerald' : 'red'} />
         </div>
 
-        {math.remaining > 0 && (
+        {math.remainingDollar > 0 && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
             <div className="flex items-center gap-2 text-amber-300 font-semibold text-sm mb-2">
               <CreditCard size={15} />
-              Требуется доплата с моей карты: <span className="mono">{fmt(math.remaining, 2)} ₽</span>
+              Необходимо доплатить с моей карты: <span className="mono">{fmt(math.topUpRub, 2)} рублей</span>
             </div>
             <select
               value={deal.topUpCardId}
@@ -124,7 +139,7 @@ export default function DealCard({ deal, cards, onComplete, onCancel, onUpdate }
             </select>
             {topUpCard && (
               <div className="text-xs text-[#8b949e] mt-2">
-                После завершения с карты {topUpCard.bankName} будет списано {fmt(math.remaining, 2)} ₽.
+                После завершения с карты {topUpCard.bankName} будет списано {fmt(math.topUpRub, 2)} ₽.
               </div>
             )}
           </div>
@@ -176,7 +191,7 @@ export default function DealCard({ deal, cards, onComplete, onCancel, onUpdate }
         <div className="flex gap-2 pt-1">
           <button
             onClick={() => onComplete(deal.id)}
-            disabled={math.remaining > 0 && !deal.topUpCardId}
+            disabled={math.remainingDollar > 0 && !deal.topUpCardId}
             className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-[#30363d] disabled:text-[#8b949e] text-white text-sm py-2.5 rounded-lg flex items-center justify-center gap-2 font-semibold transition-colors"
           >
             <Check size={15} /> Завершить маршрут
@@ -193,17 +208,18 @@ export default function DealCard({ deal, cards, onComplete, onCancel, onUpdate }
   );
 }
 
-function Metric({ label, value, tone = 'default' }) {
+function Metric({ label, value, tone = 'default', large = false }) {
   const colors = {
     default: 'text-white',
     orange: 'text-orange-300',
     emerald: 'text-emerald-400',
     amber: 'text-amber-300',
+    red: 'text-red-400',
   };
   return (
     <div className="bg-[#0d1117] border border-[#30363d] rounded-xl p-3">
       <div className="text-[10px] text-[#8b949e] uppercase tracking-wider mb-1">{label}</div>
-      <div className={`text-lg font-black mono ${colors[tone]}`}>{value}</div>
+      <div className={`${large ? 'text-2xl' : 'text-lg'} font-black mono ${colors[tone]}`}>{value}</div>
     </div>
   );
 }
@@ -223,7 +239,7 @@ function SmallInput({ className, label, value, onChange, ...props }) {
 }
 
 function InputRow({ input, index, parsing, onDelete, onUpload }) {
-  const crypto = inputCrypto(input);
+  const dollar = inputDollar(input);
   return (
     <div className="bg-[#0d1117] border border-[#30363d] rounded-xl p-3">
       <div className="flex items-center gap-3">
@@ -234,7 +250,7 @@ function InputRow({ input, index, parsing, onDelete, onUpload }) {
           <Cell label="Сумма" value={`${fmt(input.amount)} ₽`} strong />
           <Cell label="Курс" value={`${fmt(input.rate, 2)} ₽`} />
           <Cell label="Награда" value={`${input.reward || 0}%`} />
-          <Cell label="Чистая крипта" value={`${crypto.toFixed(6)} USDT`} strong tone="emerald" />
+          <Cell label="Вход $" value={`${dollar.toFixed(4)} $`} strong tone="emerald" />
         </div>
         <label className="shrink-0 cursor-pointer">
           <input type="file" accept="application/pdf,.pdf" onChange={e => onUpload(e.target.files?.[0])} className="hidden" />

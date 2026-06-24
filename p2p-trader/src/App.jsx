@@ -40,11 +40,11 @@ export default function App() {
       const route = prev.find(item => item.id === routeId);
       if (!route) return prev;
 
-      const { remaining } = calcRouteMath(route);
-      if (remaining > 0 && route.topUpCardId) {
+      const { topUpRub } = calcRouteMath(route);
+      if (topUpRub > 0 && route.topUpCardId) {
         setCards(c => c.map(card =>
           card.id === route.topUpCardId
-            ? { ...card, balance: Math.max(0, card.balance - remaining) }
+            ? { ...card, balance: Math.max(0, card.balance - topUpRub) }
             : card
         ));
       }
@@ -68,8 +68,8 @@ export default function App() {
     const todayDone = archived.filter(d =>
       d.status === 'completed' && new Date(d.closedAt).toDateString() === today
     );
-    const pnl = todayDone.reduce((sum, route) => sum + calcRouteMath(route).pnl, 0);
-    const livePnL = routes.reduce((sum, route) => sum + calcRouteMath(route).pnl, 0);
+    const pnl = todayDone.reduce((sum, route) => sum + calcRouteMath(route).totalProfit, 0);
+    const livePnL = routes.reduce((sum, route) => sum + calcRouteMath(route).totalProfit, 0);
     const volume = [...routes, ...archived].reduce((sum, route) => sum + calcRouteMath(route).totalInputAmount, 0);
     return { pnl, livePnL, volume, active: routes.length, completed: todayDone.length };
   })();
