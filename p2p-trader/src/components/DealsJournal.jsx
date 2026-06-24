@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import DealCard from './DealCard';
-import { calcDealMath, fmt } from '../utils/calculations';
+import { calcRouteMath, fmt } from '../utils/calculations';
 
-export default function DealsJournal({ deals, archived, cards, onComplete, onCancel, onUpdate, onNewDeal }) {
+export default function DealsJournal({ routes, archived, cards, onComplete, onCancel, onUpdate, onNewDeal }) {
   const [showArchive, setShowArchive] = useState(false);
 
   return (
@@ -12,23 +12,23 @@ export default function DealsJournal({ deals, archived, cards, onComplete, onCan
       <div>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[#8b949e] uppercase tracking-wider font-medium">Активные сделки</span>
-            {deals.length > 0 && (
-              <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded mono">{deals.length}</span>
+            <span className="text-xs text-[#8b949e] uppercase tracking-wider font-medium">Активные маршруты выплат</span>
+            {routes.length > 0 && (
+              <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded mono">{routes.length}</span>
             )}
           </div>
           <button onClick={onNewDeal} className="text-xs text-[#8b949e] hover:text-white flex items-center gap-1 transition-colors">
-            <Plus size={13} /> Новая сделка
+            <Plus size={13} /> Новая выплата
           </button>
         </div>
 
-        {deals.length === 0 ? (
+        {routes.length === 0 ? (
           <div className="bg-[#161b22] border border-[#30363d] rounded-lg py-8 text-center text-sm text-[#8b949e]">
-            Нет активных сделок
+            Нет активных маршрутов
           </div>
         ) : (
           <div className="space-y-2">
-            {deals.map(deal => (
+            {routes.map(deal => (
               <DealCard
                 key={deal.id}
                 deal={deal}
@@ -70,9 +70,9 @@ export default function DealsJournal({ deals, archived, cards, onComplete, onCan
 
 function ArchiveRow({ deal, cards }) {
   const [open, setOpen] = useState(false);
-  const math = calcDealMath(deal);
-  const pnl = parseFloat(math.pnl);
-  const card = cards.find(c => c.id === deal.cardId);
+  const math = calcRouteMath(deal);
+  const pnl = math.pnl;
+  const card = cards.find(c => c.id === deal.topUpCardId);
   const done = deal.status === 'completed';
   const time = deal.closedAt ? new Date(deal.closedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
 
@@ -82,10 +82,10 @@ function ArchiveRow({ deal, cards }) {
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${done ? 'bg-emerald-400' : 'bg-red-400'}`} />
         <span className="text-[#8b949e] mono">#{deal.id}</span>
         <span className={done ? 'text-emerald-400' : 'text-red-400'}>{done ? 'Завершена' : 'Отменена'}</span>
-        <span className="text-[#484f58] mono">{fmt(deal.buyAmount)} → {fmt(deal.sellAmount)} ₽</span>
+        <span className="text-[#484f58] mono">входы {fmt(math.totalInputAmount)} → выплата {fmt(deal.amount)} ₽</span>
         {done && (
           <span className={`mono font-medium ml-auto ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {pnl >= 0 ? '+' : ''}{fmt(math.pnl, 2)} ₽
+            {pnl >= 0 ? '+' : ''}{fmt(pnl, 2)} ₽
           </span>
         )}
         <span className="text-[#484f58] hidden sm:inline">{time}</span>
@@ -96,12 +96,12 @@ function ArchiveRow({ deal, cards }) {
 
       {open && (
         <div className="mt-2 pt-2 border-t border-[#30363d] grid grid-cols-2 sm:grid-cols-4 gap-2 fade-in">
-          <MiniRow label="Курс покуп." value={`${fmt(deal.buyRate, 2)} ₽`} />
-          <MiniRow label="Курс прод." value={`${fmt(deal.sellRate, 2)} ₽`} />
-          <MiniRow label="Карта" value={card ? `${card.bankName} ••${card.lastFour}` : '—'} />
-          <MiniRow label="Отправлено" value={`${fmt(deal.sendAmount)} ₽`} />
-          {deal.buyerReq && <MiniRow label="Покупатель" value={deal.buyerReq} />}
-          {deal.sellerReq && <MiniRow label="Продавец" value={deal.sellerReq} />}
+          <MiniRow label="Банк продавца" value={deal.sellerBank} />
+          <MiniRow label="Карта продавца" value={deal.sellerCard} />
+          <MiniRow label="Крипта входов" value={`${math.totalInputCrypto.toFixed(6)} USDT`} />
+          <MiniRow label="Крипта выплаты" value={`${math.payoutCrypto.toFixed(6)} USDT`} />
+          <MiniRow label="Остаток" value={`${fmt(math.remaining, 2)} ₽`} />
+          <MiniRow label="Карта доплаты" value={card ? `${card.bankName} ••${card.lastFour}` : '—'} />
         </div>
       )}
     </div>

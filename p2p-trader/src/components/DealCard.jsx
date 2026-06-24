@@ -1,217 +1,294 @@
-import { useState, useEffect, useRef } from 'react';
-import { Check, X, ChevronDown, ChevronUp, Upload, FileText, ArrowRight } from 'lucide-react';
-import { calcDealMath, fmt } from '../utils/calculations';
-import { playAlertSound, sendDealExpiredNotification } from '../utils/sound';
+import { useState } from 'react';
+import { Check, X, Plus, Upload, Loader2, AlertCircle, CheckCircle2, ArrowDown, CreditCard } from 'lucide-react';
+import { calcRouteMath, fmt, generateId, inputCrypto, payoutCrypto } from '../utils/calculations';
+import { verifyReceiptAmount } from '../utils/pdfReceipt';
 
 export default function DealCard({ deal, cards, onComplete, onCancel, onUpdate }) {
-  const [open, setOpen] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(() => Math.max(0, deal.expiresAt - Date.now()));
-  const notified = useRef(deal.expiresAt <= Date.now());
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState({ amount: '', rate: '', reward: '0', buyerName: '' });
+  const [parsingId, setParsingId] = useState(null);
+  const math = calcRouteMath(deal);
+  const req = `${deal.sellerBank} • ${deal.sellerCard}`;
+  const topUpCard = cards.find(card => card.id === deal.topUpCardId);
 
-  useEffect(() => {
-    const tick = setInterval(() => {
-      const left = Math.max(0, deal.expiresAt - Date.now());
-      setTimeLeft(left);
-      if (left === 0 && !notified.current) {
-        notified.current = true;
-        playAlertSound();
-        sendDealExpiredNotification(deal.id);
-      }
-    }, 500);
-    return () => clearInterval(tick);
-  }, [deal.expiresAt, deal.id]);
+  function addInput(e) {
+    e.preventDefault();
+    if (!draft.amount || !draft.rate) return;
+    const nextInput = {
+      id: 'IN' + generateId().slice(0, 5),
+      amount: draft.amount,
+      rate: draft.rate,
+      reward: draft.reward,
+      buyerName: draft.buyerName,
+      receipt: null,
+    };
+    onUpdate(deal.id, { inputs: [...(deal.inputs ?? []), nextInput] });
+    setDraft({ amount: '', rate: '', reward: '0', buyerName: '' });
+    setAdding(false);
+  }
 
-  const math = calcDealMath(deal);
-  const buf = parseFloat(math.buffer);
-  const pnl = parseFloat(math.pnl);
-  const expired = timeLeft === 0;
-  const critical = !expired && timeLeft < 60000;
-  const mins = Math.floor(timeLeft / 60000);
-  const secs = Math.floor((timeLeft % 60000) / 1000);
-  const timer = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  const pct = Math.max(0, (timeLeft / (deal.timerMinutes * 60000)) * 100);
-  const card = cards.find(c => c.id === deal.cardId);
+  function updateInput(inputId, patch) {
+    onUpdate(deal.id, {
+      inputs: (deal.inputs ?? []).map(input => input.id === inputId ? { ...input, ...patch } : input),
+    });
+  }
 
-  function uploadReceipt(type, e) {
-    const file = e.target.files?.[0];
-    if (file) onUpdate(deal.id, { [type]: file.name });
+  function deleteInput(inputId) {
+    onUpdate(deal.id, {
+      inputs: (deal.inputs ?? []).filter(input => input.id !== inputId),
+    });
+  }
+
+  async function uploadReceipt(input, file) {
+    if (!file) return;
+    setParsingId(input.id);
+    updateInput(input.id, {
+      receipt: { status: 'parsing', fileName: file.name },
+    });
+    try {
+      const result = await verifyReceiptAmount(file, input.amount);
+      updateInput(input.id, {
+        receipt: {
+          status: result.ok ? 'matched' : 'mismatch',
+          fileName: result.fileName,
+          matchedVariant: result.matchedVariant,
+          textPreview: result.textPreview,
+        },
+      });
+    } catch (error) {
+      updateInput(input.id, {
+        receipt: {
+          status: 'error',
+          fileName: file.name,
+          error: error instanceof Error ? error.message : 'Не удалось прочитать PDF',
+        },
+      });
+    } finally {
+      setParsingId(null);
+    }
   }
 
   return (
-    <div className={`bg-[#161b22] border rounded-lg overflow-hidden fade-in ${
-      expired ? 'border-red-500/50' : critical ? 'border-amber-500/40' : 'border-[#30363d]'
-    }`}>
-      {/* Timer progress bar */}
-      <div className="h-[2px] bg-[#21262d]">
-        <div
-          className={`h-full transition-all duration-1000 ${expired ? 'bg-red-500' : critical ? 'bg-amber-400' : 'bg-blue-500'}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-
-      <div className="p-3">
-        {/* Top row */}
-        <div className="flex items-center justify-between mb-3">
+    <div className="bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden fade-in">
+      <div className="p-4 space-y-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#8b949e] mono">#{deal.id}</span>
-            {expired && (
-              <span className="text-[10px] font-semibold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">ИСТЕКЛО</span>
+            <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full font-semibold uppercase">Выплата</span>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] text-[#8b949e] uppercase tracking-wider">PnL маршрута</div>
+            <div className={`text-2xl font-black mono ${math.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {math.pnl >= 0 ? '+' : ''}{fmt(math.pnl, 2)} ₽
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <Metric label="Сумма выплаты" value={`${fmt(deal.amount)} ₽`} tone="orange" />
+          <Metric label="Курс выплаты" value={`${fmt(deal.rate, 2)} ₽`} />
+          <Metric label="Крипта выплаты" value={`${payoutCrypto(deal).toFixed(6)} USDT`} />
+        </div>
+
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+          <div className="text-xs text-blue-300 uppercase tracking-wider font-semibold mb-1">Инструкция для покупателя</div>
+          <div className="text-lg md:text-xl font-black text-white">
+            Перевод на <span className="text-blue-300">{req}</span>
+          </div>
+          <div className="text-xs text-[#8b949e] mt-1">Все привязанные входы используют эти реквизиты автоматически.</div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <Metric label="Входы всего" value={`${fmt(math.totalInputAmount)} ₽`} tone="emerald" />
+          <Metric label="Остаток" value={`${math.remaining > 0 ? '' : '+'}${fmt(Math.abs(math.remaining))} ₽`} tone={math.remaining > 0 ? 'amber' : 'emerald'} />
+          <Metric label="Крипта входов" value={`${math.totalInputCrypto.toFixed(6)} USDT`} tone="emerald" />
+        </div>
+
+        {math.remaining > 0 && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+            <div className="flex items-center gap-2 text-amber-300 font-semibold text-sm mb-2">
+              <CreditCard size={15} />
+              Требуется доплата с моей карты: <span className="mono">{fmt(math.remaining, 2)} ₽</span>
+            </div>
+            <select
+              value={deal.topUpCardId}
+              onChange={e => onUpdate(deal.id, { topUpCardId: e.target.value })}
+              className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-[#c9d1d9] focus:outline-none focus:border-amber-500"
+            >
+              <option value="">— Выберите личную карту для списания при завершении —</option>
+              {cards.map(card => (
+                <option key={card.id} value={card.id}>
+                  {card.bankName} ••{card.lastFour} ({fmt(card.balance)} ₽)
+                </option>
+              ))}
+            </select>
+            {topUpCard && (
+              <div className="text-xs text-[#8b949e] mt-2">
+                После завершения с карты {topUpCard.bankName} будет списано {fmt(math.remaining, 2)} ₽.
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <span className={`mono text-sm font-semibold tabular-nums ${
-              expired ? 'text-red-400 timer-blink' : critical ? 'text-amber-400' : 'text-[#8b949e]'
-            }`}>{timer}</span>
-            <button onClick={() => setOpen(v => !v)} className="text-[#484f58] hover:text-[#8b949e] transition-colors">
-              {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        )}
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-[#8b949e] uppercase tracking-wider font-semibold">Привязанные входы</div>
+            <button
+              onClick={() => setAdding(value => !value)}
+              className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
+            >
+              <Plus size={13} /> Привязать Вход
             </button>
           </div>
+
+          {adding && (
+            <form onSubmit={addInput} className="grid grid-cols-12 gap-2 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 fade-in">
+              <SmallInput className="col-span-3" label="Сумма" type="number" value={draft.amount} onChange={v => setDraft(p => ({ ...p, amount: v }))} placeholder="27000" required />
+              <SmallInput className="col-span-3" label="Курс" type="number" value={draft.rate} onChange={v => setDraft(p => ({ ...p, rate: v }))} placeholder="92.50" required />
+              <SmallInput className="col-span-2" label="%" type="number" value={draft.reward} onChange={v => setDraft(p => ({ ...p, reward: v }))} placeholder="1" />
+              <SmallInput className="col-span-3" label="Покупатель" value={draft.buyerName} onChange={v => setDraft(p => ({ ...p, buyerName: v }))} placeholder="Иванов" />
+              <button className="col-span-1 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white flex items-center justify-center transition-colors" title="Добавить вход">
+                <Check size={15} />
+              </button>
+            </form>
+          )}
+
+          {(deal.inputs ?? []).length === 0 ? (
+            <div className="bg-[#0d1117] border border-dashed border-[#30363d] rounded-xl p-5 text-center text-sm text-[#8b949e]">
+              Пока нет входов. Нажмите «+ Привязать Вход».
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(deal.inputs ?? []).map((input, index) => (
+                <InputRow
+                  key={input.id}
+                  input={input}
+                  index={index}
+                  parsing={parsingId === input.id}
+                  onDelete={() => deleteInput(input.id)}
+                  onUpload={file => uploadReceipt(input, file)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* ── AMOUNT FLOW: Приём → Моя Карта → Выплата ── */}
-        <div className="flex items-center gap-2 mb-3">
-          {/* Приём */}
-          <div className="flex-1 text-center">
-            <div className="text-[10px] text-emerald-500/80 uppercase tracking-wider mb-0.5">Приём</div>
-            <div className="text-xl font-bold text-white leading-none mono">
-              {fmt(deal.buyAmount)}
-            </div>
-            <div className="text-[10px] text-[#8b949e] mt-0.5">₽</div>
-          </div>
-
-          <ArrowRight size={14} className="text-[#484f58] shrink-0 mt-1" />
-
-          {/* Моя карта */}
-          <div className="flex-1 text-center">
-            <div className="text-[10px] text-blue-400/80 uppercase tracking-wider mb-0.5">
-              {card ? `${card.bankName} ••${card.lastFour}` : 'Моя карта'}
-            </div>
-            <div className={`text-xl font-bold leading-none mono ${deal.sendAmount ? 'text-white' : 'text-[#484f58]'}`}>
-              {deal.sendAmount ? fmt(deal.sendAmount) : '—'}
-            </div>
-            <div className="text-[10px] text-[#8b949e] mt-0.5">₽</div>
-          </div>
-
-          <ArrowRight size={14} className="text-[#484f58] shrink-0 mt-1" />
-
-          {/* Выплата */}
-          <div className="flex-1 text-center">
-            <div className="text-[10px] text-orange-400/80 uppercase tracking-wider mb-0.5">Выплата</div>
-            <div className="text-xl font-bold text-white leading-none mono">
-              {fmt(deal.sellAmount)}
-            </div>
-            <div className="text-[10px] text-[#8b949e] mt-0.5">₽</div>
-          </div>
-        </div>
-
-        {/* Buffer + PnL */}
-        <div className="flex items-center justify-between text-xs border-t border-[#21262d] pt-2 mb-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[#8b949e]">Буфер:</span>
-            <span className={`mono font-semibold ${buf > 0 ? 'text-emerald-400' : buf < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>
-              {buf > 0 ? '+' : ''}{fmt(math.buffer, 2)} ₽
-            </span>
-            <span className="text-[#484f58] text-[10px]">(приём − отправка)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[#8b949e]">PnL:</span>
-            <span className={`mono font-bold text-sm ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {pnl >= 0 ? '+' : ''}{fmt(math.pnl, 2)} ₽
-            </span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-1">
           <button
             onClick={() => onComplete(deal.id)}
-            className="flex-1 bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs py-2 rounded-md flex items-center justify-center gap-1.5 font-medium transition-colors"
+            disabled={math.remaining > 0 && !deal.topUpCardId}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-[#30363d] disabled:text-[#8b949e] text-white text-sm py-2.5 rounded-lg flex items-center justify-center gap-2 font-semibold transition-colors"
           >
-            <Check size={13} /> Завершить
+            <Check size={15} /> Завершить маршрут
           </button>
           <button
             onClick={() => onCancel(deal.id)}
-            className="flex-1 bg-transparent hover:bg-red-500/10 text-[#8b949e] hover:text-red-400 text-xs py-2 rounded-md border border-[#30363d] hover:border-red-500/30 flex items-center justify-center gap-1.5 transition-colors"
+            className="px-4 bg-transparent hover:bg-red-500/10 text-[#8b949e] hover:text-red-400 text-sm py-2.5 rounded-lg border border-[#30363d] hover:border-red-500/30 flex items-center justify-center gap-2 transition-colors"
           >
-            <X size={13} /> Отменить
+            <X size={15} /> Отмена
           </button>
         </div>
       </div>
-
-      {/* Expanded section */}
-      {open && (
-        <div className="border-t border-[#21262d] p-3 space-y-3 fade-in">
-
-          {/* Fill in send */}
-          <div>
-            <div className="text-[10px] text-[#8b949e] uppercase tracking-wider mb-1.5">Отправка с моей карты</div>
-            <div className="flex gap-2">
-              <select
-                value={deal.cardId}
-                onChange={e => onUpdate(deal.id, { cardId: e.target.value })}
-                className="flex-1 bg-[#0d1117] border border-[#30363d] rounded-md px-2.5 py-1.5 text-sm text-[#c9d1d9] focus:outline-none focus:border-blue-500"
-              >
-                <option value="">— Выберите карту —</option>
-                {cards.map(c => (
-                  <option key={c.id} value={c.id}>{c.bankName} ••{c.lastFour} ({fmt(c.balance)} ₽)</option>
-                ))}
-              </select>
-              <input
-                type="number"
-                value={deal.sendAmount}
-                onChange={e => onUpdate(deal.id, { sendAmount: e.target.value })}
-                placeholder="Сумма ₽"
-                className="w-28 bg-[#0d1117] border border-[#30363d] rounded-md px-2.5 py-1.5 text-sm mono text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Details grid */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="space-y-1.5">
-              <div className="text-[10px] text-emerald-400/70 uppercase tracking-wider font-semibold">Покупатель</div>
-              {deal.buyRate    && <Row label="Курс"    value={`${fmt(deal.buyRate, 2)} ₽/USDT`} />}
-              {deal.buyReward  && <Row label="Награда" value={`${deal.buyReward}%`} />}
-              <Row label="Объём" value={`${math.cryptoBuy} USDT`} />
-              <Row label="Эфф. курс" value={`${fmt(math.effBuyRate, 2)} ₽`} />
-              {deal.buyerReq   && <Row label="Реквизиты" value={deal.buyerReq} />}
-            </div>
-            <div className="space-y-1.5">
-              <div className="text-[10px] text-orange-400/70 uppercase tracking-wider font-semibold">Продавец</div>
-              {deal.sellRate   && <Row label="Курс"    value={`${fmt(deal.sellRate, 2)} ₽/USDT`} />}
-              {deal.sellReward && <Row label="Награда" value={`${deal.sellReward}%`} />}
-              <Row label="Объём" value={`${math.cryptoSell} USDT`} />
-              <Row label="Эфф. курс" value={`${fmt(math.effSellRate, 2)} ₽`} />
-              {deal.sellerReq  && <Row label="Реквизиты" value={deal.sellerReq} />}
-            </div>
-          </div>
-
-          {/* Receipts */}
-          <div className="flex gap-2">
-            <ReceiptBtn label="Чек покупателя" name={deal.buyReceipt} onChange={e => uploadReceipt('buyReceipt', e)} />
-            <ReceiptBtn label="Чек продавца"   name={deal.sellReceipt} onChange={e => uploadReceipt('sellReceipt', e)} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-function Row({ label, value }) {
+function Metric({ label, value, tone = 'default' }) {
+  const colors = {
+    default: 'text-white',
+    orange: 'text-orange-300',
+    emerald: 'text-emerald-400',
+    amber: 'text-amber-300',
+  };
   return (
-    <div className="flex gap-1.5 items-baseline">
-      <span className="text-[#484f58] shrink-0">{label}:</span>
-      <span className="text-[#8b949e] mono break-all">{value}</span>
+    <div className="bg-[#0d1117] border border-[#30363d] rounded-xl p-3">
+      <div className="text-[10px] text-[#8b949e] uppercase tracking-wider mb-1">{label}</div>
+      <div className={`text-lg font-black mono ${colors[tone]}`}>{value}</div>
     </div>
   );
 }
 
-function ReceiptBtn({ label, name, onChange }) {
+function SmallInput({ className, label, value, onChange, ...props }) {
   return (
-    <label className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-dashed border-[#30363d] hover:border-blue-500/40 cursor-pointer transition-colors text-xs text-[#8b949e] hover:text-blue-400">
-      <input type="file" accept=".pdf,image/*" onChange={onChange} className="hidden" />
-      {name ? <FileText size={11} className="text-blue-400 shrink-0" /> : <Upload size={11} className="shrink-0" />}
-      <span className="truncate">{name || label}</span>
+    <label className={className}>
+      <span className="block text-[10px] text-[#8b949e] mb-1 uppercase tracking-wider">{label}</span>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full bg-[#161b22] border border-[#30363d] rounded-lg px-2 py-1.5 text-xs mono text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-emerald-500"
+        {...props}
+      />
     </label>
+  );
+}
+
+function InputRow({ input, index, parsing, onDelete, onUpload }) {
+  const crypto = inputCrypto(input);
+  return (
+    <div className="bg-[#0d1117] border border-[#30363d] rounded-xl p-3">
+      <div className="flex items-center gap-3">
+        <div className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs mono shrink-0">
+          {index + 1}
+        </div>
+        <div className="grid grid-cols-4 gap-3 flex-1">
+          <Cell label="Сумма" value={`${fmt(input.amount)} ₽`} strong />
+          <Cell label="Курс" value={`${fmt(input.rate, 2)} ₽`} />
+          <Cell label="Награда" value={`${input.reward || 0}%`} />
+          <Cell label="Чистая крипта" value={`${crypto.toFixed(6)} USDT`} strong tone="emerald" />
+        </div>
+        <label className="shrink-0 cursor-pointer">
+          <input type="file" accept="application/pdf,.pdf" onChange={e => onUpload(e.target.files?.[0])} className="hidden" />
+          <ReceiptStatus receipt={input.receipt} parsing={parsing} />
+        </label>
+        <button onClick={onDelete} className="text-[#484f58] hover:text-red-400 transition-colors">
+          <X size={14} />
+        </button>
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-xs text-[#8b949e]">
+        <ArrowDown size={12} className="text-blue-400" />
+        Инструкция для покупателя уже задана родительской выплатой. {input.buyerName && <span className="mono">Покупатель: {input.buyerName}</span>}
+      </div>
+    </div>
+  );
+}
+
+function Cell({ label, value, strong, tone = 'default' }) {
+  const toneClass = tone === 'emerald' ? 'text-emerald-400' : 'text-white';
+  return (
+    <div>
+      <div className="text-[10px] text-[#8b949e] uppercase tracking-wider">{label}</div>
+      <div className={`mono ${strong ? 'font-black text-sm' : 'font-medium text-xs text-[#c9d1d9]'} ${strong ? toneClass : ''}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ReceiptStatus({ receipt, parsing }) {
+  if (parsing || receipt?.status === 'parsing') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-300 border border-blue-500/30 text-xs">
+        <Loader2 size={12} className="animate-spin" /> PDF
+      </span>
+    );
+  }
+  if (receipt?.status === 'matched' || receipt?.status === 'demo') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs" title={receipt.fileName}>
+        <CheckCircle2 size={12} /> Чек OK
+      </span>
+    );
+  }
+  if (receipt?.status === 'mismatch' || receipt?.status === 'error') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-500/10 text-red-300 border border-red-500/30 text-xs" title={receipt.error || receipt.textPreview}>
+        <AlertCircle size={12} /> Не совпало
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-[#30363d] text-[#8b949e] hover:text-blue-300 hover:border-blue-500/40 text-xs transition-colors">
+      <Upload size={12} /> PDF
+    </span>
   );
 }

@@ -5,7 +5,7 @@ export function playAlertSound() {
     const frequencies = [880, 1100, 880, 1100];
     let time = audioCtx.currentTime;
 
-    frequencies.forEach((freq, i) => {
+    frequencies.forEach((freq) => {
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
 

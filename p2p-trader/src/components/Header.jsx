@@ -2,7 +2,7 @@ import { Zap } from 'lucide-react';
 import { fmt } from '../utils/calculations';
 
 export default function Header({ stats }) {
-  const { pnl, volume, active, completed } = stats;
+  const { pnl, livePnL, volume, active, completed } = stats;
   return (
     <div className="border-b border-[#30363d] bg-[#161b22]">
       <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-6">
@@ -11,10 +11,11 @@ export default function Header({ stats }) {
           <span className="font-semibold text-white text-sm">P2P Trader</span>
         </div>
         <div className="flex items-center gap-5 text-sm flex-wrap">
-          <Stat label="PnL" value={`${pnl >= 0 ? '+' : ''}${fmt(pnl)} ₽`} color={pnl >= 0 ? 'text-emerald-400' : 'text-red-400'} />
+          <Stat label="Live PnL" value={`${livePnL >= 0 ? '+' : ''}${fmt(livePnL)} ₽`} color={livePnL >= 0 ? 'text-emerald-400' : 'text-red-400'} />
+          <Stat label="PnL день" value={`${pnl >= 0 ? '+' : ''}${fmt(pnl)} ₽`} color={pnl >= 0 ? 'text-emerald-400' : 'text-red-400'} />
           <Stat label="Оборот" value={`${fmt(volume)} ₽`} />
-          <Stat label="Активных" value={active} color="text-blue-400" />
-          <Stat label="Завершено" value={completed} />
+          <Stat label="Маршрутов" value={active} color="text-blue-400" />
+          <Stat label="Закрыто" value={completed} />
         </div>
       </div>
     </div>

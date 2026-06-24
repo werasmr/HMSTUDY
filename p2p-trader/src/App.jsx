@@ -4,20 +4,18 @@ import CardsPanel from './components/CardsPanel';
 import DealForm from './components/DealForm';
 import DealsJournal from './components/DealsJournal';
 import { storage } from './utils/storage';
-import { generateId } from './utils/calculations';
-import { DEMO_CARDS, DEMO_DEALS } from './utils/demoData';
-import { requestNotificationPermission } from './utils/sound';
+import { calcRouteMath, generateId } from './utils/calculations';
+import { DEMO_CARDS, DEMO_ROUTES } from './utils/demoData';
 
 export default function App() {
   const [cards, setCards] = useState(() => storage.getCards() ?? DEMO_CARDS);
-  const [deals, setDeals] = useState(() => storage.getDeals() ?? DEMO_DEALS);
-  const [archived, setArchived] = useState(() => storage.getArchivedDeals());
+  const [routes, setRoutes] = useState(() => storage.getRoutes() ?? DEMO_ROUTES);
+  const [archived, setArchived] = useState(() => storage.getArchivedRoutes());
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => { storage.saveCards(cards); }, [cards]);
-  useEffect(() => { storage.saveDeals(deals); }, [deals]);
-  useEffect(() => { storage.saveArchivedDeals(archived); }, [archived]);
-  useEffect(() => { requestNotificationPermission(); }, []);
+  useEffect(() => { storage.saveRoutes(routes); }, [routes]);
+  useEffect(() => { storage.saveArchivedRoutes(archived); }, [archived]);
 
   function addCard(data) {
     setCards(prev => [...prev, { id: 'c' + generateId(), ...data }]);
@@ -29,55 +27,51 @@ export default function App() {
     setCards(prev => prev.filter(c => c.id !== id));
   }
 
-  function addDeal(deal) {
-    setDeals(prev => [...prev, deal]);
+  function addRoute(route) {
+    setRoutes(prev => [...prev, route]);
   }
 
-  function updateDeal(id, patch) {
-    setDeals(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d));
+  function updateRoute(id, patch) {
+    setRoutes(prev => prev.map(route => route.id === id ? { ...route, ...patch } : route));
   }
 
-  function completeDeal(dealId) {
-    setDeals(prev => {
-      const deal = prev.find(d => d.id === dealId);
-      if (!deal) return prev;
+  function completeRoute(routeId) {
+    setRoutes(prev => {
+      const route = prev.find(item => item.id === routeId);
+      if (!route) return prev;
 
-      const send = parseFloat(deal.sendAmount) || 0;
-      if (send > 0 && deal.cardId) {
+      const { remaining } = calcRouteMath(route);
+      if (remaining > 0 && route.topUpCardId) {
         setCards(c => c.map(card =>
-          card.id === deal.cardId
-            ? { ...card, balance: Math.max(0, card.balance - send) }
+          card.id === route.topUpCardId
+            ? { ...card, balance: Math.max(0, card.balance - remaining) }
             : card
         ));
       }
 
-      setArchived(a => [...a, { ...deal, status: 'completed', closedAt: Date.now() }]);
-      return prev.filter(d => d.id !== dealId);
+      setArchived(a => [...a, { ...route, status: 'completed', closedAt: Date.now() }]);
+      return prev.filter(item => item.id !== routeId);
     });
   }
 
-  function cancelDeal(dealId) {
-    setDeals(prev => {
-      const deal = prev.find(d => d.id === dealId);
-      if (!deal) return prev;
-      setArchived(a => [...a, { ...deal, status: 'cancelled', closedAt: Date.now() }]);
-      return prev.filter(d => d.id !== dealId);
+  function cancelRoute(routeId) {
+    setRoutes(prev => {
+      const route = prev.find(item => item.id === routeId);
+      if (!route) return prev;
+      setArchived(a => [...a, { ...route, status: 'cancelled', closedAt: Date.now() }]);
+      return prev.filter(item => item.id !== routeId);
     });
   }
 
-  // PnL = buyAmount - sellAmount per completed deal today
   const stats = (() => {
     const today = new Date().toDateString();
     const todayDone = archived.filter(d =>
       d.status === 'completed' && new Date(d.closedAt).toDateString() === today
     );
-    const pnl = todayDone.reduce((s, d) =>
-      s + (parseFloat(d.buyAmount) || 0) - (parseFloat(d.sellAmount) || 0), 0
-    );
-    const volume = [...deals, ...archived].reduce((s, d) =>
-      s + (parseFloat(d.buyAmount) || 0), 0
-    );
-    return { pnl, volume, active: deals.length, completed: todayDone.length };
+    const pnl = todayDone.reduce((sum, route) => sum + calcRouteMath(route).pnl, 0);
+    const livePnL = routes.reduce((sum, route) => sum + calcRouteMath(route).pnl, 0);
+    const volume = [...routes, ...archived].reduce((sum, route) => sum + calcRouteMath(route).totalInputAmount, 0);
+    return { pnl, livePnL, volume, active: routes.length, completed: todayDone.length };
   })();
 
   return (
@@ -86,17 +80,17 @@ export default function App() {
       <main className="max-w-3xl mx-auto px-4 py-5 space-y-5">
         <CardsPanel cards={cards} onAdd={addCard} onUpdate={updateCard} onDelete={deleteCard} />
         <DealsJournal
-          deals={deals}
+          routes={routes}
           archived={archived}
           cards={cards}
-          onComplete={completeDeal}
-          onCancel={cancelDeal}
-          onUpdate={updateDeal}
+          onComplete={completeRoute}
+          onCancel={cancelRoute}
+          onUpdate={updateRoute}
           onNewDeal={() => setShowForm(true)}
         />
       </main>
       {showForm && (
-        <DealForm cards={cards} onClose={() => setShowForm(false)} onSubmit={addDeal} />
+        <DealForm onClose={() => setShowForm(false)} onSubmit={addRoute} />
       )}
     </div>
   );
