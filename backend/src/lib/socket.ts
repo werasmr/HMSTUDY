@@ -2,13 +2,14 @@ import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma';
+import { getAllowedOrigins } from './cors';
 
 let io: Server;
 
 export function initSocket(httpServer: HttpServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      origin: getAllowedOrigins(),
       methods: ['GET', 'POST'],
     },
   });

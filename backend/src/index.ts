@@ -14,6 +14,7 @@ import disputesRoutes from './routes/disputes';
 import dashboardRoutes from './routes/dashboard';
 import uploadRoutes from './routes/upload';
 import { initSocket } from './lib/socket';
+import { getAllowedOrigins } from './lib/cors';
 import { processExpiredOrders } from './services/matching';
 
 dotenv.config();
@@ -24,7 +25,7 @@ const httpServer = createServer(app);
 initSocket(httpServer);
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: getAllowedOrigins(),
   credentials: true,
 }));
 app.use(express.json());
