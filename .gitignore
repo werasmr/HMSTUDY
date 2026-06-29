@@ -1,0 +1,9 @@
+node_modules
+dist
+uploads
+.env
+*.log
+backend/prisma/seed.js
+backend/prisma/seed.js.map
+backend/prisma/seed.d.ts
+backend/prisma/seed.d.ts.map

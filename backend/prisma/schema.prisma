@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TRADER
+  MERCHANT
+}
+
+enum Currency {
+  RUB
+  USDT
+}
+
+enum OrderType {
+  PAY_IN
+  PAY_OUT
+}
+
+enum OrderStatus {
+  PENDING
+  WAITING_PAYMENT
+  PAID
+  CONFIRMED
+  EXPIRED
+  CANCELLED
+  DISPUTED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  FEE
+  FREEZE
+  UNFREEZE
+}
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
+enum RequisiteType {
+  CARD
+  ACCOUNT
+  SBP
+}
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  password         String
+  role             Role     @default(TRADER)
+  balance          Float    @default(0)
+  frozenBalance    Float    @default(0)
+  insuranceDeposit Float    @default(0)
+  isOnline         Boolean  @default(false)
+  currency         Currency @default(USDT)
+  apiKey           String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  requisites   Requisite[]
+  devices      Device[]
+  ordersAsTrader   Order[] @relation("TraderOrders")
+  ordersAsMerchant Order[] @relation("MerchantOrders")
+  transactions Transaction[]
+  messages     Message[]
+  disputes     Dispute[]
+}
+
+model Requisite {
+  id                  String   @id @default(uuid())
+  traderId            String
+  name                String
+  ownerName           String
+  bank                String
+  currency            Currency @default(RUB)
+  cardNumber          String?
+  accountNumber       String?
+  phone               String?
+  acceptCard          Boolean  @default(true)
+  acceptAccount       Boolean  @default(false)
+  acceptSbp           Boolean  @default(false)
+  dailyLimit          Float    @default(0)
+  totalLimit          Float    @default(0)
+  dailyUsed           Float    @default(0)
+  totalUsed           Float    @default(0)
+  minOrder            Float    @default(100)
+  maxOrder            Float    @default(100000)
+  maxPaymentsPerDay   Int      @default(10)
+  paymentsToday       Int      @default(0)
+  maxParallelDeals    Int      @default(3)
+  delayBetweenOrders  Int      @default(0)
+  deviceId            String?
+  useUniqueAmounts    Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  isArchived          Boolean  @default(false)
+  lastOrderAt         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  trader  User     @relation(fields: [traderId], references: [id], onDelete: Cascade)
+  device  Device?  @relation(fields: [deviceId], references: [id])
+  orders  Order[]
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  merchantOrderId String?
+  type            OrderType
+  status          OrderStatus @default(PENDING)
+  amount          Float
+  amountUsdt      Float
+  rate            Float
+  requisiteId     String?
+  traderId        String?
+  merchantId      String?
+  clientName      String?
+  callbackUrl     String?
+  successUrl      String?
+  expiresAt       DateTime
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  requisite Requisite? @relation(fields: [requisiteId], references: [id])
+  trader    User?      @relation("TraderOrders", fields: [traderId], references: [id])
+  merchant  User?      @relation("MerchantOrders", fields: [merchantId], references: [id])
+  transactions Transaction[]
+  disputes  Dispute[]
+  messages  Message[]
+}
+
+model Transaction {
+  id        String          @id @default(uuid())
+  orderId   String?
+  userId    String
+  type      TransactionType
+  amount    Float
+  currency  Currency
+  createdAt DateTime        @default(now())
+
+  order Order? @relation(fields: [orderId], references: [id])
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Dispute {
+  id         String        @id @default(uuid())
+  orderId    String
+  userId     String
+  reason     String
+  status     DisputeStatus @default(OPEN)
+  createdAt  DateTime      @default(now())
+  resolvedAt DateTime?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Device {
+  id        String   @id @default(uuid())
+  traderId  String
+  name      String
+  token     String   @unique @default(uuid())
+  isOnline  Boolean  @default(false)
+  lastSeen  DateTime?
+  createdAt DateTime @default(now())
+
+  trader     User        @relation(fields: [traderId], references: [id], onDelete: Cascade)
+  requisites Requisite[]
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  orderId   String
+  senderId  String
+  text      String
+  fileUrl   String?
+  createdAt DateTime @default(now())
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender User  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
