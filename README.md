@@ -10,6 +10,15 @@
 - **Аутентификация:** JWT
 - **Realtime:** Socket.io
 
+## Деплой одной кнопкой (Render)
+
+1. Открой: **https://render.com/deploy?repo=https://github.com/werasmr/HMSTUDY**
+2. Войди через GitHub
+3. Вставь `DATABASE_URL` из Neon
+4. Нажми **Apply** → подожди 5–10 мин
+
+Подробнее: [DEPLOY-ONE-CLICK.md](./DEPLOY-ONE-CLICK.md)
+
 ## Быстрый старт (Docker)
 
 ```bash
