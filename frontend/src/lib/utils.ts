@@ -1,9 +1,10 @@
-export function formatAmount(amount: number, currency: 'RUB' | 'USDT' = 'RUB'): string {
+export function formatAmount(amount: number, currencyCode = 'RUB'): string {
+  const dec = currencyCode === 'USDT' || currencyCode === 'USD' ? 2 : 0;
   const formatted = new Intl.NumberFormat('ru-RU', {
-    minimumFractionDigits: currency === 'USDT' ? 2 : 0,
-    maximumFractionDigits: currency === 'USDT' ? 2 : 0,
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
   }).format(amount);
-  return `${formatted} ${currency}`;
+  return `${formatted} ${currencyCode}`;
 }
 
 export function formatCardNumber(num?: string): string {

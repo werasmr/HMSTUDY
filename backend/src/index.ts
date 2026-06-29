@@ -15,6 +15,7 @@ import dashboardRoutes from './routes/dashboard';
 import uploadRoutes from './routes/upload';
 import adminRoutes from './routes/admin';
 import walletsRoutes from './routes/wallets';
+import currenciesRoutes from './routes/currencies';
 import { initSocket } from './lib/socket';
 import { getAllowedOrigins } from './lib/cors';
 import { processExpiredOrders, resetDailyRequisiteCounters } from './services/matching';
@@ -46,6 +47,7 @@ app.use('/api/transactions', transactionsRoutes);
 app.use('/api/disputes', disputesRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/currencies', currenciesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/wallets', walletsRoutes);
 

@@ -1,17 +1,39 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
+import { CURRENCIES } from '../src/data/currencies';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  for (const c of CURRENCIES) {
+    await prisma.currencyConfig.upsert({
+      where: { code: c.code },
+      update: { rateToUsdt: c.rateToUsdt, name: c.name, region: c.region, symbol: c.symbol, decimals: c.decimals },
+      create: { ...c, updatedAt: new Date() },
+    });
+  }
+
+  await prisma.commissionRate.upsert({
+    where: { id: 'global-commission' },
+    update: {},
+    create: {
+      id: 'global-commission',
+      name: 'Глобальная ставка NETWORS',
+      targetType: 'GLOBAL',
+      payInRate: 1.5,
+      payOutRate: 1.0,
+      isActive: true,
+    },
+  });
+
   const password = await bcrypt.hash('password123', 10);
 
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@prismapay.com' },
-    update: {},
+    where: { email: 'admin@networs.io' },
+    update: { isActive: true },
     create: {
-      email: 'admin@prismapay.com',
+      email: 'admin@networs.io',
       password,
       role: 'ADMIN',
       balance: 0,
@@ -20,14 +42,10 @@ async function main() {
   });
 
   const trader = await prisma.user.upsert({
-    where: { email: 'trader@prismapay.com' },
-    update: {
-      balance: 5000,
-      insuranceDeposit: 500,
-      isActive: true,
-    },
+    where: { email: 'trader@networs.io' },
+    update: { balance: 5000, insuranceDeposit: 500, isActive: true },
     create: {
-      email: 'trader@prismapay.com',
+      email: 'trader@networs.io',
       password,
       role: 'TRADER',
       balance: 5000,
@@ -38,10 +56,10 @@ async function main() {
   });
 
   const merchant = await prisma.user.upsert({
-    where: { email: 'merchant@prismapay.com' },
+    where: { email: 'merchant@networs.io' },
     update: { isActive: true },
     create: {
-      email: 'merchant@prismapay.com',
+      email: 'merchant@networs.io',
       password,
       role: 'MERCHANT',
       apiKey: uuidv4(),
@@ -63,14 +81,14 @@ async function main() {
 
   await prisma.requisite.upsert({
     where: { id: 'seed-requisite-1' },
-    update: {},
+    update: { currencyCode: 'RUB' },
     create: {
       id: 'seed-requisite-1',
       traderId: trader.id,
-      name: 'Основная карта',
+      name: 'Основная карта RUB',
       ownerName: 'Иванов Иван Иванович',
       bank: 'Тинькофф',
-      currency: 'RUB',
+      currencyCode: 'RUB',
       cardNumber: '5536914123456789',
       phone: '+79991234567',
       acceptCard: true,
@@ -87,24 +105,24 @@ async function main() {
   });
 
   await prisma.wallet.upsert({
-    where: { traderId_address: { traderId: trader.id, address: 'TXseedWalletAddress123456789' } },
+    where: { traderId_address: { traderId: trader.id, address: 'TXnetworsWallet123456789' } },
     update: {},
     create: {
       traderId: trader.id,
       assignedBy: admin.id,
-      address: 'TXseedWalletAddress123456789',
+      address: 'TXnetworsWallet123456789',
       network: 'TRC20',
+      currencyCode: 'USDT',
       label: 'Основной USDT',
     },
   });
 
-  console.log('Seed completed:');
+  console.log('NETWORS seed completed:');
+  console.log('  Currencies:', CURRENCIES.length);
   console.log('  Admin:', admin.email, '/ password123');
   console.log('  Trader:', trader.email, '/ password123');
   console.log('  Merchant:', merchant.email, '/ password123');
   console.log('  Merchant API Key:', merchant.apiKey);
 }
 
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+main().catch(console.error).finally(() => prisma.$disconnect());

@@ -19,7 +19,7 @@ export interface User {
   frozenBalance: number;
   insuranceDeposit: number;
   isOnline: boolean;
-  currency: 'RUB' | 'USDT';
+  currencyCode: string;
   apiKey?: string;
   createdAt?: string;
 }
@@ -39,7 +39,7 @@ export interface Requisite {
   name: string;
   ownerName: string;
   bank: string;
-  currency: 'RUB' | 'USDT';
+  currencyCode: string;
   cardNumber?: string;
   accountNumber?: string;
   phone?: string;
@@ -70,8 +70,11 @@ export interface Order {
   type: OrderType;
   status: OrderStatus;
   amount: number;
+  currencyCode: string;
   amountUsdt: number;
   rate: number;
+  feeRate?: number;
+  feeAmount?: number;
   requisiteId?: string;
   requisite?: Requisite;
   traderId?: string;
@@ -90,7 +93,7 @@ export interface Transaction {
   userId: string;
   type: 'DEPOSIT' | 'WITHDRAWAL' | 'FEE' | 'FREEZE' | 'UNFREEZE';
   amount: number;
-  currency: 'RUB' | 'USDT';
+  currencyCode: string;
   createdAt: string;
   order?: { id: string; type: OrderType; status: OrderStatus };
 }

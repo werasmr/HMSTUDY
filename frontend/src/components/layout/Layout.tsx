@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, CreditCard,
   Smartphone, AlertTriangle, Wallet, Receipt, User, LogOut,
-  Menu, X, Users, Shield,
+  Menu, X,   Users, Shield, Coins, Percent, ArrowDownToLine,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +29,9 @@ const traderNav = [
 const adminNav = [
   { to: '/admin/users', icon: Users, label: 'Пользователи', roles: ['ADMIN'] as Role[] },
   { to: '/admin/wallets', icon: Shield, label: 'Кошельки', roles: ['ADMIN'] as Role[] },
+  { to: '/admin/currencies', icon: Coins, label: 'Валюты', roles: ['ADMIN'] as Role[] },
+  { to: '/admin/commissions', icon: Percent, label: 'Ставки', roles: ['ADMIN'] as Role[] },
+  { to: '/admin/deposits', icon: ArrowDownToLine, label: 'Пополнения', roles: ['ADMIN'] as Role[] },
 ];
 
 export function Layout() {
@@ -62,9 +65,9 @@ export function Layout() {
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">PP</span>
+              <span className="text-white font-bold text-sm">NW</span>
             </div>
-            <span className="font-semibold text-gray-100">PrismaPay</span>
+            <span className="font-semibold text-gray-100">NETWORS</span>
           </div>
           <button className="lg:hidden text-gray-400" onClick={() => setMobileOpen(false)}>
             <X size={20} />
@@ -139,7 +142,7 @@ export function Layout() {
           <button onClick={() => setMobileOpen(true)} className="text-gray-400">
             <Menu size={24} />
           </button>
-          <span className="font-semibold">PrismaPay</span>
+          <span className="font-semibold">NETWORS</span>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">

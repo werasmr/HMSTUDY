@@ -10,7 +10,7 @@ import { Toggle } from '../components/ui/Toggle';
 import { formatAmount, formatCardNumber, formatPhone } from '../lib/utils';
 
 const emptyForm = {
-  name: '', ownerName: '', bank: 'Тинькофф', currency: 'RUB',
+  name: '', ownerName: '', bank: 'Тинькофф', currencyCode: 'RUB',
   cardNumber: '', accountNumber: '', phone: '',
   acceptCard: true, acceptAccount: false, acceptSbp: false,
   dailyLimit: '500000', totalLimit: '5000000',
@@ -28,6 +28,14 @@ export function RequisitesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
+  const [currencyOptions, setCurrencyOptions] = useState<{ value: string; label: string }[]>([{ value: 'RUB', label: 'RUB' }]);
+
+  useEffect(() => {
+    api.get('/api/currencies').then((r) => {
+      const fiat = r.data.currencies.filter((c: { code: string; name: string }) => c.code !== 'USDT');
+      setCurrencyOptions(fiat.map((c: { code: string; name: string }) => ({ value: c.code, label: `${c.code} — ${c.name}` })));
+    }).catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -54,7 +62,7 @@ export function RequisitesPage() {
   const openEdit = (req: Requisite) => {
     setEditId(req.id);
     setForm({
-      name: req.name, ownerName: req.ownerName, bank: req.bank, currency: req.currency,
+      name: req.name, ownerName: req.ownerName, bank: req.bank, currencyCode: req.currencyCode,
       cardNumber: req.cardNumber || '', accountNumber: req.accountNumber || '', phone: req.phone || '',
       acceptCard: req.acceptCard, acceptAccount: req.acceptAccount, acceptSbp: req.acceptSbp,
       dailyLimit: String(req.dailyLimit), totalLimit: String(req.totalLimit),
@@ -196,8 +204,8 @@ export function RequisitesPage() {
             <Input label="Имя владельца *" value={form.ownerName} onChange={(e) => setField('ownerName', e.target.value)} required />
             <Select label="Банк *" value={form.bank} onChange={(e) => setField('bank', e.target.value)}
               options={BANKS.map((b) => ({ value: b, label: b }))} />
-            <Select label="Валюта *" value={form.currency} onChange={(e) => setField('currency', e.target.value)}
-              options={[{ value: 'RUB', label: 'RUB' }, { value: 'USDT', label: 'USDT' }]} />
+            <Select label="Валюта *" value={form.currencyCode} onChange={(e) => setField('currencyCode', e.target.value)}
+              options={currencyOptions} />
             <Input label="Номер карты" value={form.cardNumber} onChange={(e) => setField('cardNumber', e.target.value)} placeholder="XXXX XXXX XXXX XXXX" />
             <Input label="Номер счёта" value={form.accountNumber} onChange={(e) => setField('accountNumber', e.target.value)} />
             <Input label="Номер телефона" value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+7 (999) 123-45-67" />

@@ -16,12 +16,26 @@ const TYPE_LABELS: Record<string, string> = {
 export function FinancesPage() {
   const { user } = useAuth();
   const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [depositForm, setDepositForm] = useState({ walletId: '', amount: '', txHash: '' });
+  const [depositMsg, setDepositMsg] = useState('');
 
   useEffect(() => {
     if (user?.role === 'TRADER') {
       api.get('/api/wallets/my').then((r) => setWallets(r.data)).catch(() => {});
     }
   }, [user?.role]);
+
+  const submitDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDepositMsg('');
+    try {
+      await api.post('/api/wallets/deposits', depositForm);
+      setDepositMsg('Заявка отправлена. Ожидайте подтверждения админа.');
+      setDepositForm({ walletId: '', amount: '', txHash: '' });
+    } catch {
+      setDepositMsg('Ошибка отправки заявки');
+    }
+  };
 
   return (
     <div>
@@ -59,9 +73,29 @@ export function FinancesPage() {
                     {w.label && <span className="text-sm text-gray-400">{w.label}</span>}
                   </div>
                   <p className="font-mono text-sm text-gray-200 break-all">{w.address}</p>
+                  <p className="text-xs text-gray-500 mt-1">{w.currencyCode} · {w.network}</p>
                 </div>
               ))}
             </div>
+          )}
+
+          {wallets.length > 0 && (
+            <form onSubmit={submitDeposit} className="mt-6 bg-bg-card rounded-xl border border-gray-700 p-5 space-y-3">
+              <h3 className="font-medium text-gray-200">Заявка на пополнение</h3>
+              <select value={depositForm.walletId} onChange={(e) => setDepositForm({ ...depositForm, walletId: e.target.value })}
+                className="w-full px-3 py-2 bg-bg-primary border border-gray-700 rounded-lg text-gray-100" required>
+                <option value="">— Кошелёк —</option>
+                {wallets.map((w) => <option key={w.id} value={w.id}>{w.label || w.address.slice(0, 12)} ({w.currencyCode})</option>)}
+              </select>
+              <input type="number" step="0.01" placeholder="Сумма USDT" value={depositForm.amount}
+                onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
+                className="w-full px-3 py-2 bg-bg-primary border border-gray-700 rounded-lg text-gray-100" required />
+              <input placeholder="TX Hash (необязательно)" value={depositForm.txHash}
+                onChange={(e) => setDepositForm({ ...depositForm, txHash: e.target.value })}
+                className="w-full px-3 py-2 bg-bg-primary border border-gray-700 rounded-lg text-gray-100" />
+              <button type="submit" className="w-full py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600">Отправить заявку</button>
+              {depositMsg && <p className="text-sm text-success">{depositMsg}</p>}
+            </form>
           )}
         </div>
       )}
@@ -107,7 +141,7 @@ export function TransactionsPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 font-medium text-gray-200">
-                  {formatAmount(tx.amount, tx.currency)}
+                  {formatAmount(tx.amount, tx.currencyCode)}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-400">
                   {tx.order?.id ? tx.order.id.slice(0, 8) + '...' : '—'}

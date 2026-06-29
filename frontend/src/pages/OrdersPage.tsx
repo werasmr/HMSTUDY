@@ -140,7 +140,7 @@ export function OrdersPage({ type, title }: OrdersPageProps) {
                   </td>
                   <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-200">{formatAmount(order.amount)}</div>
+                    <div className="font-medium text-gray-200">{formatAmount(order.amount, order.currencyCode)}</div>
                     <div className="text-xs text-gray-500">{formatAmount(order.amountUsdt, 'USDT')}</div>
                   </td>
                   <td className="px-4 py-3">

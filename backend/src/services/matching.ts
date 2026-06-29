@@ -1,41 +1,40 @@
 import prisma from '../lib/prisma';
 import { Requisite } from '@prisma/client';
-import { rubToUsdt, getUsdtRate } from '../utils/format';
+import { fiatToUsdt, getRateToUsdt, getCommissionRate } from './currency';
 import {
   freezeTraderBalanceTx,
   confirmOrderTx,
   releaseOrderFundsTx,
-  roundRub,
-  getAvailableBalance,
+  roundUsdt,
 } from './ledger';
 
 interface MatchResult {
   requisite: Requisite;
   amount: number;
+  currencyCode: string;
   amountUsdt: number;
   rate: number;
+  feeRate: number;
 }
 
 export async function findMatchingRequisite(
   amount: number,
-  _type: 'PAY_IN' | 'PAY_OUT' = 'PAY_IN'
+  currencyCode: string,
+  merchantId?: string
 ): Promise<MatchResult | null> {
-  const rate = getUsdtRate();
+  const rate = await getRateToUsdt(currencyCode);
+  const feeRate = await getCommissionRate('PAY_IN', undefined, merchantId);
 
   const requisites = await prisma.requisite.findMany({
     where: {
       isActive: true,
       isArchived: false,
+      currencyCode,
       trader: { isOnline: true, isActive: true, role: 'TRADER' },
     },
     include: {
       trader: true,
-      device: true,
-      orders: {
-        where: {
-          status: { in: ['PENDING', 'WAITING_PAYMENT', 'PAID'] },
-        },
-      },
+      orders: { where: { status: { in: ['PENDING', 'WAITING_PAYMENT', 'PAID'] } } },
     },
   });
 
@@ -46,13 +45,11 @@ export async function findMatchingRequisite(
     if (req.dailyLimit > 0 && req.dailyUsed + amount > req.dailyLimit) continue;
     if (req.totalLimit > 0 && req.totalUsed + amount > req.totalLimit) continue;
     if (req.paymentsToday >= req.maxPaymentsPerDay) continue;
-
-    const activeDeals = req.orders.length;
-    if (activeDeals >= req.maxParallelDeals) continue;
+    if (req.orders.length >= req.maxParallelDeals) continue;
 
     if (req.delayBetweenOrders > 0 && req.lastOrderAt) {
-      const minutesSince = (Date.now() - req.lastOrderAt.getTime()) / 60000;
-      if (minutesSince < req.delayBetweenOrders) continue;
+      const mins = (Date.now() - req.lastOrderAt.getTime()) / 60000;
+      if (mins < req.delayBetweenOrders) continue;
     }
 
     let finalAmount = amount;
@@ -61,25 +58,24 @@ export async function findMatchingRequisite(
       if (finalAmount > req.maxOrder) continue;
     }
 
-    const amountUsdt = rubToUsdt(finalAmount, rate);
-    const available = getAvailableBalance(req.trader.balance, req.trader.frozenBalance);
-    if (available < amountUsdt) continue;
-    if (req.trader.insuranceDeposit <= 0) continue;
+    const amountUsdt = fiatToUsdt(finalAmount, rate);
+    const available = req.trader.balance - req.trader.frozenBalance;
+    if (available < amountUsdt || req.trader.insuranceDeposit <= 0) continue;
 
-    candidates.push({ requisite: req, score: activeDeals, finalAmount });
+    candidates.push({ requisite: req, score: req.orders.length, finalAmount });
   }
 
   if (candidates.length === 0) return null;
-
   candidates.sort((a, b) => a.score - b.score);
   const selected = candidates[0];
-  const amountUsdt = rubToUsdt(selected.finalAmount, rate);
 
   return {
     requisite: selected.requisite,
-    amount: roundRub(selected.finalAmount),
-    amountUsdt,
+    amount: selected.finalAmount,
+    currencyCode,
+    amountUsdt: fiatToUsdt(selected.finalAmount, rate),
     rate,
+    feeRate,
   };
 }
 
@@ -100,8 +96,10 @@ export async function createPaymentOrder(params: {
         type: 'PAY_IN',
         status: 'WAITING_PAYMENT',
         amount: match.amount,
+        currencyCode: match.currencyCode,
         amountUsdt: match.amountUsdt,
         rate: match.rate,
+        feeRate: match.feeRate,
         requisiteId: match.requisite.id,
         traderId: match.requisite.traderId,
         merchantId,
@@ -112,18 +110,22 @@ export async function createPaymentOrder(params: {
     });
 
     await freezeTraderBalanceTx(tx, match.requisite.traderId, match.amountUsdt, order.id);
-
     await tx.requisite.update({
       where: { id: match.requisite.id },
       data: { lastOrderAt: new Date() },
     });
-
     return order;
   });
 }
 
 export async function confirmOrder(orderId: string) {
-  await prisma.$transaction((tx) => confirmOrderTx(tx, orderId));
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order?.traderId) throw new Error('Order not found');
+
+  const feeRate = order.feeRate || await getCommissionRate('PAY_IN', order.traderId, order.merchantId ?? undefined);
+  const feeAmount = roundUsdt(order.amountUsdt * (feeRate / 100));
+
+  await prisma.$transaction((tx) => confirmOrderTx(tx, orderId, feeAmount));
 }
 
 export async function cancelOrder(orderId: string) {
@@ -150,20 +152,21 @@ export async function sendWebhook(orderId: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order?.callbackUrl) return;
 
-  const payload = {
-    orderId: order.id,
-    merchantOrderId: order.merchantOrderId,
-    status: order.status,
-    amount: order.amount,
-    amountUsdt: order.amountUsdt,
-    rate: order.rate,
-  };
-
   try {
     await fetch(order.callbackUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        orderId: order.id,
+        merchantOrderId: order.merchantOrderId,
+        status: order.status,
+        amount: order.amount,
+        currencyCode: order.currencyCode,
+        amountUsdt: order.amountUsdt,
+        rate: order.rate,
+        feeRate: order.feeRate,
+        feeAmount: order.feeAmount,
+      }),
     });
   } catch (err) {
     console.error('Webhook failed:', err);
@@ -172,12 +175,8 @@ export async function sendWebhook(orderId: string) {
 
 export async function processExpiredOrders() {
   const expired = await prisma.order.findMany({
-    where: {
-      status: { in: ['PENDING', 'WAITING_PAYMENT'] },
-      expiresAt: { lt: new Date() },
-    },
+    where: { status: { in: ['PENDING', 'WAITING_PAYMENT'] }, expiresAt: { lt: new Date() } },
   });
-
   for (const order of expired) {
     await expireOrder(order.id);
     await sendWebhook(order.id);
@@ -185,7 +184,5 @@ export async function processExpiredOrders() {
 }
 
 export async function resetDailyRequisiteCounters() {
-  await prisma.requisite.updateMany({
-    data: { paymentsToday: 0, dailyUsed: 0 },
-  });
+  await prisma.requisite.updateMany({ data: { paymentsToday: 0, dailyUsed: 0 } });
 }

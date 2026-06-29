@@ -8,6 +8,7 @@ export interface Wallet {
   assignedBy: string;
   address: string;
   network: WalletNetwork;
+  currencyCode: string;
   label?: string;
   isActive: boolean;
   createdAt: string;

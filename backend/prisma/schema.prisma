@@ -13,11 +13,6 @@ enum Role {
   MERCHANT
 }
 
-enum Currency {
-  RUB
-  USDT
-}
-
 enum OrderType {
   PAY_IN
   PAY_OUT
@@ -47,16 +42,42 @@ enum DisputeStatus {
   CLOSED
 }
 
-enum RequisiteType {
-  CARD
-  ACCOUNT
-  SBP
-}
-
 enum WalletNetwork {
   TRC20
   ERC20
   BEP20
+}
+
+enum CommissionTarget {
+  GLOBAL
+  TRADER
+  MERCHANT
+  ROLE
+}
+
+model CurrencyConfig {
+  code       String   @id
+  name       String
+  region     String
+  symbol     String   @default("")
+  rateToUsdt Float
+  isActive   Boolean  @default(true)
+  decimals   Int      @default(2)
+  updatedAt  DateTime @updatedAt
+}
+
+model CommissionRate {
+  id         String           @id @default(uuid())
+  name       String
+  targetType CommissionTarget @default(GLOBAL)
+  targetId   String?
+  role       Role?
+  payInRate  Float            @default(1.5)
+  payOutRate Float            @default(1.0)
+  isActive   Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  updatedBy  String?
 }
 
 model User {
@@ -69,7 +90,7 @@ model User {
   insuranceDeposit Float    @default(0)
   isOnline         Boolean  @default(false)
   isActive         Boolean  @default(true)
-  currency         Currency @default(USDT)
+  currencyCode     String   @default("USDT")
   apiKey           String?  @unique
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -83,23 +104,42 @@ model User {
   transactions     Transaction[]
   messages         Message[]
   disputes         Dispute[]
+  walletDeposits   WalletDeposit[]
 }
 
 model Wallet {
-  id         String        @id @default(uuid())
-  traderId   String
-  assignedBy String
-  address    String
-  network    WalletNetwork @default(TRC20)
-  label      String?
-  isActive   Boolean       @default(true)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id           String        @id @default(uuid())
+  traderId     String
+  assignedBy   String
+  address      String
+  network      WalletNetwork @default(TRC20)
+  currencyCode String        @default("USDT")
+  label        String?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  trader   User @relation("TraderWallets", fields: [traderId], references: [id], onDelete: Cascade)
-  assigner User @relation("AssignedWallets", fields: [assignedBy], references: [id])
+  trader   User            @relation("TraderWallets", fields: [traderId], references: [id], onDelete: Cascade)
+  assigner User            @relation("AssignedWallets", fields: [assignedBy], references: [id])
+  deposits WalletDeposit[]
 
   @@unique([traderId, address])
+}
+
+model WalletDeposit {
+  id           String   @id @default(uuid())
+  walletId     String
+  traderId     String
+  amount       Float
+  currencyCode String   @default("USDT")
+  txHash       String?
+  status       String   @default("PENDING")
+  reviewedBy   String?
+  createdAt    DateTime @default(now())
+  reviewedAt   DateTime?
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  trader User   @relation(fields: [traderId], references: [id], onDelete: Cascade)
 }
 
 model Requisite {
@@ -108,7 +148,7 @@ model Requisite {
   name                String
   ownerName           String
   bank                String
-  currency            Currency @default(RUB)
+  currencyCode        String   @default("RUB")
   cardNumber          String?
   accountNumber       String?
   phone               String?
@@ -144,8 +184,11 @@ model Order {
   type            OrderType
   status          OrderStatus @default(PENDING)
   amount          Float
+  currencyCode    String      @default("RUB")
   amountUsdt      Float
   rate            Float
+  feeRate         Float       @default(0)
+  feeAmount       Float       @default(0)
   requisiteId     String?
   traderId        String?
   merchantId      String?
@@ -165,13 +208,13 @@ model Order {
 }
 
 model Transaction {
-  id        String          @id @default(uuid())
-  orderId   String?
-  userId    String
-  type      TransactionType
-  amount    Float
-  currency  Currency
-  createdAt DateTime        @default(now())
+  id           String          @id @default(uuid())
+  orderId      String?
+  userId       String
+  type         TransactionType
+  amount       Float
+  currencyCode String          @default("USDT")
+  createdAt    DateTime        @default(now())
 
   order Order? @relation(fields: [orderId], references: [id])
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)

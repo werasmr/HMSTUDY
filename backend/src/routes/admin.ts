@@ -3,8 +3,9 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import prisma from '../lib/prisma';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth';
-import { adminAdjustBalanceTx } from '../services/ledger';
+import { adminAdjustBalanceTx, approveWalletDepositTx } from '../services/ledger';
 import { pickRequisiteFields, parseNumber, parseIntSafe } from '../utils/validation';
+import { upsertCurrency, upsertCommissionRate, getAllCurrencies } from '../services/currency';
 
 const router = Router();
 
@@ -109,7 +110,7 @@ router.get('/wallets', async (req, res) => {
 });
 
 router.post('/wallets', async (req: AuthRequest, res: Response) => {
-  const { traderId, address, network = 'TRC20', label } = req.body;
+  const { traderId, address, network = 'TRC20', label, currencyCode = 'USDT' } = req.body;
   if (!traderId || !address) {
     return res.status(400).json({ error: 'traderId and address required' });
   }
@@ -126,6 +127,7 @@ router.post('/wallets', async (req: AuthRequest, res: Response) => {
       address: String(address).trim(),
       network,
       label,
+      currencyCode,
     },
     include: { trader: { select: { id: true, email: true } } },
   });
@@ -175,7 +177,7 @@ router.post('/requisites', async (req, res) => {
       name: data.name as string,
       ownerName: data.ownerName as string,
       bank: data.bank as string,
-      currency: (data.currency as 'RUB' | 'USDT') || 'RUB',
+      currencyCode: (data.currencyCode as string) || (data.currency as string) || 'RUB',
       cardNumber: data.cardNumber as string | undefined,
       accountNumber: data.accountNumber as string | undefined,
       phone: data.phone as string | undefined,
@@ -229,6 +231,91 @@ router.get('/orders', async (req, res) => {
     prisma.order.count({ where }),
   ]);
   res.json({ orders, total });
+});
+
+// --- Currencies ---
+router.get('/currencies', async (_req, res) => {
+  const currencies = await getAllCurrencies(false);
+  res.json(currencies);
+});
+
+router.patch('/currencies/:code', async (req: AuthRequest, res: Response) => {
+  const { rateToUsdt, isActive, name, symbol } = req.body;
+  const c = await upsertCurrency({
+    code: req.params.code,
+    name: name || req.params.code,
+    region: req.body.region || 'GLOBAL',
+    symbol,
+    rateToUsdt: parseNumber(rateToUsdt, 1),
+    isActive: isActive ?? true,
+  });
+  res.json(c);
+});
+
+// --- Commission rates (ставки) ---
+router.get('/commissions', async (_req, res) => {
+  const rates = await prisma.commissionRate.findMany({ orderBy: { createdAt: 'desc' } });
+  res.json(rates);
+});
+
+router.post('/commissions', async (req: AuthRequest, res: Response) => {
+  const { name, targetType, targetId, role, payInRate, payOutRate, isActive } = req.body;
+  const rate = await upsertCommissionRate({
+    name,
+    targetType: targetType || 'GLOBAL',
+    targetId,
+    role,
+    payInRate: parseNumber(payInRate, 1.5),
+    payOutRate: parseNumber(payOutRate, 1.0),
+    isActive,
+    updatedBy: req.user!.id,
+  });
+  res.status(201).json(rate);
+});
+
+router.patch('/commissions/:id', async (req: AuthRequest, res: Response) => {
+  const { name, targetType, targetId, role, payInRate, payOutRate, isActive } = req.body;
+  const rate = await upsertCommissionRate({
+    id: req.params.id,
+    name,
+    targetType,
+    targetId,
+    role,
+    payInRate: parseNumber(payInRate, 1.5),
+    payOutRate: parseNumber(payOutRate, 1.0),
+    isActive,
+    updatedBy: req.user!.id,
+  });
+  res.json(rate);
+});
+
+// --- Wallet deposits ---
+router.get('/deposits', async (_req, res) => {
+  const deposits = await prisma.walletDeposit.findMany({
+    include: {
+      wallet: true,
+      trader: { select: { id: true, email: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(deposits);
+});
+
+router.post('/deposits/:id/approve', async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.$transaction((tx) => approveWalletDepositTx(tx, req.params.id, req.user!.id));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : 'Failed' });
+  }
+});
+
+router.post('/deposits/:id/reject', async (req: AuthRequest, res: Response) => {
+  await prisma.walletDeposit.update({
+    where: { id: req.params.id },
+    data: { status: 'REJECTED', reviewedBy: req.user!.id, reviewedAt: new Date() },
+  });
+  res.json({ success: true });
 });
 
 export default router;

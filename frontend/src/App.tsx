@@ -13,6 +13,9 @@ import { DevicesPage } from './pages/DevicesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminWalletsPage } from './pages/admin/AdminWalletsPage';
+import { AdminCurrenciesPage } from './pages/admin/AdminCurrenciesPage';
+import { AdminCommissionsPage } from './pages/admin/AdminCommissionsPage';
+import { AdminDepositsPage } from './pages/admin/AdminDepositsPage';
 import type { Role } from './types';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -29,9 +32,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function RoleRoute({ roles, children }: { roles: Role[]; children: React.ReactNode }) {
   const { user } = useAuth();
-  if (!user || !roles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (!user || !roles.includes(user.role)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -53,6 +54,9 @@ function AppRoutes() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="admin/users" element={<RoleRoute roles={['ADMIN']}><AdminUsersPage /></RoleRoute>} />
         <Route path="admin/wallets" element={<RoleRoute roles={['ADMIN']}><AdminWalletsPage /></RoleRoute>} />
+        <Route path="admin/currencies" element={<RoleRoute roles={['ADMIN']}><AdminCurrenciesPage /></RoleRoute>} />
+        <Route path="admin/commissions" element={<RoleRoute roles={['ADMIN']}><AdminCommissionsPage /></RoleRoute>} />
+        <Route path="admin/deposits" element={<RoleRoute roles={['ADMIN']}><AdminDepositsPage /></RoleRoute>} />
       </Route>
     </Routes>
   );

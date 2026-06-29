@@ -50,7 +50,7 @@ router.post('/', requireRole('TRADER'), async (req: AuthRequest, res: Response) 
         name: data.name as string,
         ownerName: data.ownerName as string,
         bank: data.bank as string,
-        currency: (data.currency as 'RUB' | 'USDT') || 'RUB',
+        currencyCode: (data.currencyCode as string) || (data.currency as string) || 'RUB',
         cardNumber: data.cardNumber as string | undefined,
         accountNumber: data.accountNumber as string | undefined,
         phone: data.phone as string | undefined,

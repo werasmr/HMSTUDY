@@ -1,16 +1,12 @@
-export function formatAmount(amount: number, currency: 'RUB' | 'USDT'): string {
+export function formatAmount(amount: number, currencyCode = 'RUB', decimals?: number): string {
+  const dec = decimals ?? (currencyCode === 'USDT' || currencyCode === 'USD' ? 2 : 0);
   const formatted = new Intl.NumberFormat('ru-RU', {
-    minimumFractionDigits: currency === 'USDT' ? 2 : 0,
-    maximumFractionDigits: currency === 'USDT' ? 2 : 0,
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
   }).format(amount);
-  return `${formatted} ${currency}`;
+  return `${formatted} ${currencyCode}`;
 }
 
-export function getUsdtRate(): number {
+export async function getDefaultRubRate(): Promise<number> {
   return parseFloat(process.env.USDT_RUB_RATE || '81.3');
-}
-
-export function rubToUsdt(rub: number, rate?: number): number {
-  const r = rate ?? getUsdtRate();
-  return Math.round((rub / r) * 100) / 100;
 }

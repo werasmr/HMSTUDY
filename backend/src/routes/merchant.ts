@@ -15,15 +15,16 @@ router.use(authenticateApiKey);
 
 router.post('/payment', async (req: AuthRequest, res: Response) => {
   try {
-    const { amount, orderId: merchantOrderId, callbackUrl, successUrl } = req.body;
+    const { amount, currency = 'RUB', orderId: merchantOrderId, callbackUrl, successUrl } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
     }
 
-    const match = await findMatchingRequisite(amount, 'PAY_IN');
+    const currencyCode = String(currency).toUpperCase();
+    const match = await findMatchingRequisite(amount, currencyCode, req.user!.id);
     if (!match) {
-      return res.status(503).json({ error: 'No available requisites' });
+      return res.status(503).json({ error: 'No available requisites for this currency' });
     }
 
     const expiryMinutes = parseInt(process.env.ORDER_EXPIRY_MINUTES || '15');
@@ -49,6 +50,8 @@ router.post('/payment', async (req: AuthRequest, res: Response) => {
         ownerName: match.requisite.ownerName,
       },
       amount: match.amount,
+      currencyCode: match.currencyCode,
+      feeRate: match.feeRate,
       expiresAt: expiresAt.toISOString(),
     });
   } catch (err) {
@@ -73,8 +76,11 @@ router.get('/payment/:orderId', async (req: AuthRequest, res: Response) => {
       merchantOrderId: order.merchantOrderId,
       status: order.status,
       amount: order.amount,
+      currencyCode: order.currencyCode,
       amountUsdt: order.amountUsdt,
       rate: order.rate,
+      feeRate: order.feeRate,
+      feeAmount: order.feeAmount,
       expiresAt: order.expiresAt,
       createdAt: order.createdAt,
     });
