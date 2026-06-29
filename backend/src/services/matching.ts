@@ -1,6 +1,13 @@
 import prisma from '../lib/prisma';
-import { Requisite, OrderStatus } from '@prisma/client';
+import { Requisite } from '@prisma/client';
 import { rubToUsdt, getUsdtRate } from '../utils/format';
+import {
+  freezeTraderBalanceTx,
+  confirmOrderTx,
+  releaseOrderFundsTx,
+  roundRub,
+  getAvailableBalance,
+} from './ledger';
 
 interface MatchResult {
   requisite: Requisite;
@@ -11,7 +18,7 @@ interface MatchResult {
 
 export async function findMatchingRequisite(
   amount: number,
-  type: 'PAY_IN' | 'PAY_OUT' = 'PAY_IN'
+  _type: 'PAY_IN' | 'PAY_OUT' = 'PAY_IN'
 ): Promise<MatchResult | null> {
   const rate = getUsdtRate();
 
@@ -19,7 +26,7 @@ export async function findMatchingRequisite(
     where: {
       isActive: true,
       isArchived: false,
-      trader: { isOnline: true },
+      trader: { isOnline: true, isActive: true, role: 'TRADER' },
     },
     include: {
       trader: true,
@@ -51,10 +58,15 @@ export async function findMatchingRequisite(
     let finalAmount = amount;
     if (req.useUniqueAmounts) {
       finalAmount = amount + Math.floor(Math.random() * 9) + 1;
+      if (finalAmount > req.maxOrder) continue;
     }
 
-    const activeOrdersCount = req.orders.length;
-    candidates.push({ requisite: req, score: activeOrdersCount, finalAmount });
+    const amountUsdt = rubToUsdt(finalAmount, rate);
+    const available = getAvailableBalance(req.trader.balance, req.trader.frozenBalance);
+    if (available < amountUsdt) continue;
+    if (req.trader.insuranceDeposit <= 0) continue;
+
+    candidates.push({ requisite: req, score: activeDeals, finalAmount });
   }
 
   if (candidates.length === 0) return null;
@@ -65,103 +77,61 @@ export async function findMatchingRequisite(
 
   return {
     requisite: selected.requisite,
-    amount: selected.finalAmount,
+    amount: roundRub(selected.finalAmount),
     amountUsdt,
     rate,
   };
 }
 
-export async function freezeTraderBalance(traderId: string, amountUsdt: number, orderId: string) {
-  const trader = await prisma.user.findUnique({ where: { id: traderId } });
-  if (!trader) throw new Error('Trader not found');
-  if (trader.balance - trader.frozenBalance < amountUsdt) {
-    throw new Error('Insufficient balance');
-  }
+export async function createPaymentOrder(params: {
+  merchantId: string;
+  merchantOrderId?: string;
+  callbackUrl?: string;
+  successUrl?: string;
+  match: MatchResult;
+  expiresAt: Date;
+}) {
+  const { merchantId, merchantOrderId, callbackUrl, successUrl, match, expiresAt } = params;
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: traderId },
-      data: { frozenBalance: { increment: amountUsdt } },
-    }),
-    prisma.transaction.create({
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.create({
       data: {
-        userId: traderId,
-        orderId,
-        type: 'FREEZE',
-        amount: amountUsdt,
-        currency: 'USDT',
+        merchantOrderId,
+        type: 'PAY_IN',
+        status: 'WAITING_PAYMENT',
+        amount: match.amount,
+        amountUsdt: match.amountUsdt,
+        rate: match.rate,
+        requisiteId: match.requisite.id,
+        traderId: match.requisite.traderId,
+        merchantId,
+        callbackUrl,
+        successUrl,
+        expiresAt,
       },
-    }),
-  ]);
+    });
+
+    await freezeTraderBalanceTx(tx, match.requisite.traderId, match.amountUsdt, order.id);
+
+    await tx.requisite.update({
+      where: { id: match.requisite.id },
+      data: { lastOrderAt: new Date() },
+    });
+
+    return order;
+  });
 }
 
 export async function confirmOrder(orderId: string) {
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    include: { trader: true, requisite: true },
-  });
-  if (!order || !order.traderId) throw new Error('Order not found');
+  await prisma.$transaction((tx) => confirmOrderTx(tx, orderId));
+}
 
-  await prisma.$transaction([
-    prisma.order.update({
-      where: { id: orderId },
-      data: { status: 'CONFIRMED' },
-    }),
-    prisma.user.update({
-      where: { id: order.traderId },
-      data: {
-        frozenBalance: { decrement: order.amountUsdt },
-        balance: { decrement: order.amountUsdt },
-      },
-    }),
-    prisma.transaction.create({
-      data: {
-        userId: order.traderId,
-        orderId,
-        type: 'WITHDRAWAL',
-        amount: order.amountUsdt,
-        currency: 'USDT',
-      },
-    }),
-    ...(order.requisiteId
-      ? [
-          prisma.requisite.update({
-            where: { id: order.requisiteId },
-            data: {
-              dailyUsed: { increment: order.amount },
-              totalUsed: { increment: order.amount },
-              paymentsToday: { increment: 1 },
-            },
-          }),
-        ]
-      : []),
-  ]);
+export async function cancelOrder(orderId: string) {
+  await prisma.$transaction((tx) => releaseOrderFundsTx(tx, orderId, 'CANCELLED'));
 }
 
 export async function expireOrder(orderId: string) {
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
-  if (!order || !order.traderId) return;
-  if (order.status === 'CONFIRMED' || order.status === 'EXPIRED') return;
-
-  await prisma.$transaction([
-    prisma.order.update({
-      where: { id: orderId },
-      data: { status: 'EXPIRED' },
-    }),
-    prisma.user.update({
-      where: { id: order.traderId },
-      data: { frozenBalance: { decrement: order.amountUsdt } },
-    }),
-    prisma.transaction.create({
-      data: {
-        userId: order.traderId,
-        orderId,
-        type: 'UNFREEZE',
-        amount: order.amountUsdt,
-        currency: 'USDT',
-      },
-    }),
-  ]);
+  await prisma.$transaction((tx) => releaseOrderFundsTx(tx, orderId, 'EXPIRED'));
 }
 
 export function getRequisiteType(requisite: Requisite): 'СБП' | 'Карта' | 'Счёт' {
@@ -212,4 +182,10 @@ export async function processExpiredOrders() {
     await expireOrder(order.id);
     await sendWebhook(order.id);
   }
+}
+
+export async function resetDailyRequisiteCounters() {
+  await prisma.requisite.updateMany({
+    data: { paymentsToday: 0, dailyUsed: 0 },
+  });
 }

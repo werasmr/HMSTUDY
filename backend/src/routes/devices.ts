@@ -5,7 +5,7 @@ import { AuthRequest, authenticate, requireRole } from '../middleware/auth';
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole('TRADER', 'ADMIN'));
+router.use(requireRole('TRADER'));
 
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {

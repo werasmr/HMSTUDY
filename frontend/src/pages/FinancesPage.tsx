@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import type { Transaction } from '../types';
+import type { Wallet } from '../types/admin';
 import { useAuth } from '../context/AuthContext';
 import { formatAmount, formatDate } from '../lib/utils';
 
@@ -14,6 +15,13 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function FinancesPage() {
   const { user } = useAuth();
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+
+  useEffect(() => {
+    if (user?.role === 'TRADER') {
+      api.get('/api/wallets/my').then((r) => setWallets(r.data)).catch(() => {});
+    }
+  }, [user?.role]);
 
   return (
     <div>
@@ -33,6 +41,30 @@ export function FinancesPage() {
           <p className="text-2xl font-bold text-gray-100">{formatAmount(user?.insuranceDeposit ?? 0, 'USDT')}</p>
         </div>
       </div>
+
+      {user?.role === 'TRADER' && (
+        <div>
+          <h2 className="text-lg font-semibold text-gray-200 mb-3">Мои USDT-кошельки</h2>
+          <p className="text-sm text-gray-500 mb-4">Кошельки назначает администратор. Пополняйте баланс на эти адреса.</p>
+          {wallets.length === 0 ? (
+            <div className="bg-bg-card rounded-xl border border-gray-700 p-8 text-center text-gray-500">
+              Кошельки ещё не назначены. Обратитесь к администратору.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {wallets.map((w) => (
+                <div key={w.id} className="bg-bg-card rounded-xl border border-gray-700 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="px-2 py-0.5 bg-accent/10 text-accent rounded text-xs">{w.network}</span>
+                    {w.label && <span className="text-sm text-gray-400">{w.label}</span>}
+                  </div>
+                  <p className="font-mono text-sm text-gray-200 break-all">{w.address}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

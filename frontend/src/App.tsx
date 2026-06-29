@@ -11,6 +11,9 @@ import { DisputesPage } from './pages/DisputesPage';
 import { FinancesPage, TransactionsPage } from './pages/FinancesPage';
 import { DevicesPage } from './pages/DevicesPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { AdminUsersPage } from './pages/admin/AdminUsersPage';
+import { AdminWalletsPage } from './pages/admin/AdminWalletsPage';
+import type { Role } from './types';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
@@ -24,6 +27,14 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return token ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
+function RoleRoute({ roles, children }: { roles: Role[]; children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user || !roles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -32,14 +43,16 @@ function AppRoutes() {
       <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="requisites" element={<RequisitesPage />} />
-        <Route path="sell" element={<OrdersPage type="PAY_IN" title="Pay In" />} />
-        <Route path="buy" element={<OrdersPage type="PAY_OUT" title="Pay Out" />} />
+        <Route path="requisites" element={<RoleRoute roles={['TRADER', 'ADMIN']}><RequisitesPage /></RoleRoute>} />
+        <Route path="sell" element={<RoleRoute roles={['TRADER', 'ADMIN']}><OrdersPage type="PAY_IN" title="Pay In" /></RoleRoute>} />
+        <Route path="buy" element={<RoleRoute roles={['TRADER', 'ADMIN']}><OrdersPage type="PAY_OUT" title="Pay Out" /></RoleRoute>} />
         <Route path="disputes" element={<DisputesPage />} />
-        <Route path="finances" element={<FinancesPage />} />
+        <Route path="finances" element={<RoleRoute roles={['TRADER', 'ADMIN']}><FinancesPage /></RoleRoute>} />
         <Route path="transactions" element={<TransactionsPage />} />
-        <Route path="devices" element={<DevicesPage />} />
+        <Route path="devices" element={<RoleRoute roles={['TRADER']}><DevicesPage /></RoleRoute>} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="admin/users" element={<RoleRoute roles={['ADMIN']}><AdminUsersPage /></RoleRoute>} />
+        <Route path="admin/wallets" element={<RoleRoute roles={['ADMIN']}><AdminWalletsPage /></RoleRoute>} />
       </Route>
     </Routes>
   );

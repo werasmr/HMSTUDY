@@ -13,9 +13,11 @@ import transactionsRoutes from './routes/transactions';
 import disputesRoutes from './routes/disputes';
 import dashboardRoutes from './routes/dashboard';
 import uploadRoutes from './routes/upload';
+import adminRoutes from './routes/admin';
+import walletsRoutes from './routes/wallets';
 import { initSocket } from './lib/socket';
 import { getAllowedOrigins } from './lib/cors';
-import { processExpiredOrders } from './services/matching';
+import { processExpiredOrders, resetDailyRequisiteCounters } from './services/matching';
 
 dotenv.config();
 
@@ -44,6 +46,8 @@ app.use('/api/transactions', transactionsRoutes);
 app.use('/api/disputes', disputesRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/wallets', walletsRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
@@ -62,6 +66,14 @@ httpServer.listen(PORT, () => {
 
 setInterval(() => {
   processExpiredOrders().catch(console.error);
+}, 60 * 1000);
+
+// Reset daily requisite counters at midnight UTC
+setInterval(() => {
+  const now = new Date();
+  if (now.getUTCHours() === 0 && now.getUTCMinutes() === 0) {
+    resetDailyRequisiteCounters().catch(console.error);
+  }
 }, 60 * 1000);
 
 export default app;

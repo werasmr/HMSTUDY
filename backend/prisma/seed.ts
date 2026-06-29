@@ -14,13 +14,18 @@ async function main() {
       email: 'admin@prismapay.com',
       password,
       role: 'ADMIN',
-      balance: 10000,
+      balance: 0,
+      isActive: true,
     },
   });
 
   const trader = await prisma.user.upsert({
     where: { email: 'trader@prismapay.com' },
-    update: {},
+    update: {
+      balance: 5000,
+      insuranceDeposit: 500,
+      isActive: true,
+    },
     create: {
       email: 'trader@prismapay.com',
       password,
@@ -28,17 +33,19 @@ async function main() {
       balance: 5000,
       insuranceDeposit: 500,
       isOnline: true,
+      isActive: true,
     },
   });
 
   const merchant = await prisma.user.upsert({
     where: { email: 'merchant@prismapay.com' },
-    update: {},
+    update: { isActive: true },
     create: {
       email: 'merchant@prismapay.com',
       password,
       role: 'MERCHANT',
       apiKey: uuidv4(),
+      isActive: true,
     },
   });
 
@@ -76,6 +83,18 @@ async function main() {
       maxParallelDeals: 5,
       deviceId: device.id,
       isActive: true,
+    },
+  });
+
+  await prisma.wallet.upsert({
+    where: { traderId_address: { traderId: trader.id, address: 'TXseedWalletAddress123456789' } },
+    update: {},
+    create: {
+      traderId: trader.id,
+      assignedBy: admin.id,
+      address: 'TXseedWalletAddress123456789',
+      network: 'TRC20',
+      label: 'Основной USDT',
     },
   });
 

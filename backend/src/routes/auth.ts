@@ -1,7 +1,6 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from 'uuid';
 import prisma from '../lib/prisma';
 import { AuthRequest, authenticate } from '../middleware/auth';
 
@@ -9,9 +8,12 @@ const router = Router();
 
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, role = 'TRADER' } = req.body;
+    const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -20,16 +22,14 @@ router.post('/register', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const apiKey = role === 'MERCHANT' ? uuidv4() : undefined;
 
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
-        role,
-        apiKey,
-        insuranceDeposit: role === 'TRADER' ? 100 : 0,
-        balance: role === 'TRADER' ? 1000 : 0,
+        role: 'TRADER',
+        balance: 0,
+        insuranceDeposit: 0,
       },
       select: {
         id: true,
@@ -40,7 +40,6 @@ router.post('/register', async (req, res) => {
         insuranceDeposit: true,
         isOnline: true,
         currency: true,
-        apiKey: true,
         createdAt: true,
       },
     });
@@ -66,7 +65,7 @@ router.post('/login', async (req, res) => {
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
+    if (!user || !user.isActive) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -126,6 +125,9 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
 
 router.patch('/online', authenticate, async (req: AuthRequest, res: Response) => {
   try {
+    if (req.user!.role !== 'TRADER') {
+      return res.status(403).json({ error: 'Only traders can toggle online status' });
+    }
     const { isOnline } = req.body;
     const user = await prisma.user.update({
       where: { id: req.user!.id },

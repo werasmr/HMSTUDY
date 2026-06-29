@@ -3,7 +3,7 @@ import prisma from '../lib/prisma';
 import { AuthRequest, authenticateApiKey } from '../middleware/auth';
 import {
   findMatchingRequisite,
-  freezeTraderBalance,
+  createPaymentOrder,
   getRequisiteType,
   getRequisiteNumber,
 } from '../services/matching';
@@ -29,28 +29,13 @@ router.post('/payment', async (req: AuthRequest, res: Response) => {
     const expiryMinutes = parseInt(process.env.ORDER_EXPIRY_MINUTES || '15');
     const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
 
-    const order = await prisma.order.create({
-      data: {
-        merchantOrderId,
-        type: 'PAY_IN',
-        status: 'WAITING_PAYMENT',
-        amount: match.amount,
-        amountUsdt: match.amountUsdt,
-        rate: match.rate,
-        requisiteId: match.requisite.id,
-        traderId: match.requisite.traderId,
-        merchantId: req.user!.id,
-        callbackUrl,
-        successUrl,
-        expiresAt,
-      },
-    });
-
-    await freezeTraderBalance(match.requisite.traderId, match.amountUsdt, order.id);
-
-    await prisma.requisite.update({
-      where: { id: match.requisite.id },
-      data: { lastOrderAt: new Date() },
+    const order = await createPaymentOrder({
+      merchantId: req.user!.id,
+      merchantOrderId,
+      callbackUrl,
+      successUrl,
+      match,
+      expiresAt,
     });
 
     emitToUser(match.requisite.traderId, 'new_order', order);
@@ -68,7 +53,7 @@ router.post('/payment', async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to create payment' });
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to create payment' });
   }
 });
 

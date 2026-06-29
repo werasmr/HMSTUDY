@@ -1,19 +1,24 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest, authenticate, requireRole } from '../middleware/auth';
+import { pickRequisiteFields, parseNumber, parseIntSafe } from '../utils/validation';
 
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole('TRADER', 'ADMIN'));
 
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', requireRole('TRADER', 'ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
     const { archived, search } = req.query;
+    const isAdmin = req.user!.role === 'ADMIN';
+
     const where: Record<string, unknown> = {
-      traderId: req.user!.id,
       isArchived: archived === 'true',
     };
+
+    if (!isAdmin) {
+      where.traderId = req.user!.id;
+    }
 
     if (search) {
       where.OR = [
@@ -26,7 +31,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 
     const requisites = await prisma.requisite.findMany({
       where,
-      include: { device: true },
+      include: { device: true, trader: isAdmin ? { select: { id: true, email: true } } : false },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -36,31 +41,31 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', requireRole('TRADER'), async (req: AuthRequest, res: Response) => {
   try {
-    const data = req.body;
+    const data = pickRequisiteFields(req.body);
     const requisite = await prisma.requisite.create({
       data: {
         traderId: req.user!.id,
-        name: data.name,
-        ownerName: data.ownerName,
-        bank: data.bank,
-        currency: data.currency || 'RUB',
-        cardNumber: data.cardNumber,
-        accountNumber: data.accountNumber,
-        phone: data.phone,
-        acceptCard: data.acceptCard ?? true,
-        acceptAccount: data.acceptAccount ?? false,
-        acceptSbp: data.acceptSbp ?? false,
-        dailyLimit: parseFloat(data.dailyLimit) || 0,
-        totalLimit: parseFloat(data.totalLimit) || 0,
-        minOrder: parseFloat(data.minOrder) || 100,
-        maxOrder: parseFloat(data.maxOrder) || 100000,
-        maxPaymentsPerDay: parseInt(data.maxPaymentsPerDay) || 10,
-        maxParallelDeals: parseInt(data.maxParallelDeals) || 3,
-        delayBetweenOrders: parseInt(data.delayBetweenOrders) || 0,
-        deviceId: data.deviceId || null,
-        useUniqueAmounts: data.useUniqueAmounts ?? false,
+        name: data.name as string,
+        ownerName: data.ownerName as string,
+        bank: data.bank as string,
+        currency: (data.currency as 'RUB' | 'USDT') || 'RUB',
+        cardNumber: data.cardNumber as string | undefined,
+        accountNumber: data.accountNumber as string | undefined,
+        phone: data.phone as string | undefined,
+        acceptCard: Boolean(data.acceptCard ?? true),
+        acceptAccount: Boolean(data.acceptAccount ?? false),
+        acceptSbp: Boolean(data.acceptSbp ?? false),
+        dailyLimit: parseNumber(data.dailyLimit, 0),
+        totalLimit: parseNumber(data.totalLimit, 0),
+        minOrder: parseNumber(data.minOrder, 100),
+        maxOrder: parseNumber(data.maxOrder, 100000),
+        maxPaymentsPerDay: parseIntSafe(data.maxPaymentsPerDay, 10),
+        maxParallelDeals: parseIntSafe(data.maxParallelDeals, 3),
+        delayBetweenOrders: parseIntSafe(data.delayBetweenOrders, 0),
+        deviceId: (data.deviceId as string) || null,
+        useUniqueAmounts: Boolean(data.useUniqueAmounts),
       },
       include: { device: true },
     });
@@ -71,16 +76,17 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.patch('/:id', async (req: AuthRequest, res: Response) => {
+router.patch('/:id', requireRole('TRADER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.requisite.findFirst({
       where: { id: req.params.id, traderId: req.user!.id },
     });
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
+    const data = pickRequisiteFields(req.body);
     const requisite = await prisma.requisite.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
       include: { device: true },
     });
     res.json(requisite);
@@ -89,7 +95,7 @@ router.patch('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', requireRole('TRADER'), async (req: AuthRequest, res: Response) => {
   try {
     const existing = await prisma.requisite.findFirst({
       where: { id: req.params.id, traderId: req.user!.id },

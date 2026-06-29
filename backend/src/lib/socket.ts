@@ -3,6 +3,8 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma';
 import { getAllowedOrigins } from './cors';
+import { canAccessOrder } from '../middleware/auth';
+import { Role } from '@prisma/client';
 
 let io: Server;
 
@@ -21,9 +23,9 @@ export function initSocket(httpServer: HttpServer) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
       const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-      if (!user) return next(new Error('User not found'));
+      if (!user || !user.isActive) return next(new Error('User not found'));
       socket.data.userId = user.id;
-      socket.data.role = user.role;
+      socket.data.role = user.role as Role;
       next();
     } catch {
       next(new Error('Invalid token'));
@@ -32,9 +34,12 @@ export function initSocket(httpServer: HttpServer) {
 
   io.on('connection', (socket: Socket) => {
     const userId = socket.data.userId as string;
+    const role = socket.data.role as Role;
     socket.join(`user:${userId}`);
 
-    socket.on('join_order', (orderId: string) => {
+    socket.on('join_order', async (orderId: string) => {
+      const allowed = await canAccessOrder(userId, role, orderId);
+      if (!allowed) return;
       socket.join(`order:${orderId}`);
     });
 
@@ -43,11 +48,14 @@ export function initSocket(httpServer: HttpServer) {
     });
 
     socket.on('send_message', async (data: { orderId: string; text: string; fileUrl?: string }) => {
+      const allowed = await canAccessOrder(userId, role, data.orderId);
+      if (!allowed || !data.text?.trim()) return;
+
       const message = await prisma.message.create({
         data: {
           orderId: data.orderId,
           senderId: userId,
-          text: data.text,
+          text: data.text.trim(),
           fileUrl: data.fileUrl,
         },
         include: { sender: { select: { id: true, email: true, role: true } } },
@@ -56,10 +64,12 @@ export function initSocket(httpServer: HttpServer) {
     });
 
     socket.on('disconnect', async () => {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { isOnline: false },
-      }).catch(() => {});
+      if (role === 'TRADER') {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { isOnline: false },
+        }).catch(() => {});
+      }
     });
   });
 

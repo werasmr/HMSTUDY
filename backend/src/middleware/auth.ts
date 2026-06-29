@@ -8,10 +8,11 @@ export interface AuthRequest extends Request {
     id: string;
     email: string;
     role: Role;
+    isActive: boolean;
   };
 }
 
-export function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
+export async function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -24,7 +25,17 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
       email: string;
       role: Role;
     };
-    req.user = decoded;
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, email: true, role: true, isActive: true },
+    });
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    req.user = user;
     next();
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
@@ -47,7 +58,7 @@ export async function authenticateApiKey(req: Request, res: Response, next: Next
   }
 
   const merchant = await prisma.user.findUnique({ where: { apiKey } });
-  if (!merchant || merchant.role !== 'MERCHANT') {
+  if (!merchant || merchant.role !== 'MERCHANT' || !merchant.isActive) {
     return res.status(401).json({ error: 'Invalid API key' });
   }
 
@@ -55,6 +66,21 @@ export async function authenticateApiKey(req: Request, res: Response, next: Next
     id: merchant.id,
     email: merchant.email,
     role: merchant.role,
+    isActive: merchant.isActive,
   };
   next();
+}
+
+export async function canAccessOrder(userId: string, role: Role, orderId: string): Promise<boolean> {
+  if (role === 'ADMIN') return true;
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { traderId: true, merchantId: true },
+  });
+  if (!order) return false;
+
+  if (role === 'TRADER' && order.traderId === userId) return true;
+  if (role === 'MERCHANT' && order.merchantId === userId) return true;
+  return false;
 }

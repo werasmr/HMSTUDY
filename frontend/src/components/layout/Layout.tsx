@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, CreditCard,
   Smartphone, AlertTriangle, Wallet, Receipt, User, LogOut,
-  Menu, X,
+  Menu, X, Users, Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -12,16 +12,23 @@ import { cn } from '../../lib/utils';
 import api from '../../lib/api';
 import { useEffect } from 'react';
 
-const navItems = [
-  { to: '/profile', icon: User, label: 'Профиль' },
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Дашборд' },
-  { to: '/transactions', icon: Receipt, label: 'Транзакции' },
-  { to: '/finances', icon: Wallet, label: 'Финансы' },
-  { to: '/buy', icon: ArrowUpRight, label: 'Pay Out' },
-  { to: '/sell', icon: ArrowDownLeft, label: 'Pay In' },
-  { to: '/disputes', icon: AlertTriangle, label: 'Споры' },
-  { to: '/requisites', icon: CreditCard, label: 'Реквизиты' },
-  { to: '/devices', icon: Smartphone, label: 'Устройства' },
+import type { Role } from '../../types';
+
+const traderNav = [
+  { to: '/profile', icon: User, label: 'Профиль', roles: ['TRADER', 'MERCHANT', 'ADMIN'] as Role[] },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Дашборд', roles: ['TRADER', 'MERCHANT', 'ADMIN'] as Role[] },
+  { to: '/transactions', icon: Receipt, label: 'Транзакции', roles: ['TRADER', 'MERCHANT', 'ADMIN'] as Role[] },
+  { to: '/finances', icon: Wallet, label: 'Финансы', roles: ['TRADER', 'ADMIN'] as Role[] },
+  { to: '/buy', icon: ArrowUpRight, label: 'Pay Out', roles: ['TRADER', 'ADMIN'] as Role[] },
+  { to: '/sell', icon: ArrowDownLeft, label: 'Pay In', roles: ['TRADER', 'ADMIN'] as Role[] },
+  { to: '/disputes', icon: AlertTriangle, label: 'Споры', roles: ['TRADER', 'MERCHANT', 'ADMIN'] as Role[] },
+  { to: '/requisites', icon: CreditCard, label: 'Реквизиты', roles: ['TRADER', 'ADMIN'] as Role[] },
+  { to: '/devices', icon: Smartphone, label: 'Устройства', roles: ['TRADER'] as Role[] },
+];
+
+const adminNav = [
+  { to: '/admin/users', icon: Users, label: 'Пользователи', roles: ['ADMIN'] as Role[] },
+  { to: '/admin/wallets', icon: Shield, label: 'Кошельки', roles: ['ADMIN'] as Role[] },
 ];
 
 export function Layout() {
@@ -33,6 +40,9 @@ export function Layout() {
   useEffect(() => {
     api.get('/api/dashboard/stats').then((res) => setUsdtRate(res.data.usdtRate)).catch(() => {});
   }, []);
+
+  const role = user?.role ?? 'TRADER';
+  const navItems = [...traderNav, ...adminNav].filter((item) => item.roles.includes(role));
 
   const handleLogout = () => {
     logout();
@@ -81,16 +91,19 @@ export function Layout() {
         </nav>
 
         <div className="px-4 py-4 border-t border-gray-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className={cn(
-              'px-2 py-0.5 rounded text-xs font-semibold',
-              user?.isOnline ? 'bg-success/20 text-success' : 'bg-gray-700 text-gray-400'
-            )}>
-              {user?.isOnline ? 'ОНЛАЙН' : 'ОФФЛАЙН'}
-            </span>
-            <Toggle checked={user?.isOnline ?? false} onChange={toggleOnline} />
-          </div>
+          {role === 'TRADER' && (
+            <div className="flex items-center justify-between">
+              <span className={cn(
+                'px-2 py-0.5 rounded text-xs font-semibold',
+                user?.isOnline ? 'bg-success/20 text-success' : 'bg-gray-700 text-gray-400'
+              )}>
+                {user?.isOnline ? 'ОНЛАЙН' : 'ОФФЛАЙН'}
+              </span>
+              <Toggle checked={user?.isOnline ?? false} onChange={toggleOnline} />
+            </div>
+          )}
 
+          {role === 'TRADER' && (
           <div className="text-xs text-gray-500 space-y-1">
             <div className="flex justify-between">
               <span>USDT/RUB</span>
@@ -109,6 +122,7 @@ export function Layout() {
               <span className="text-gray-300">{formatAmount(user?.insuranceDeposit ?? 0, 'USDT')}</span>
             </div>
           </div>
+          )}
 
           <button
             onClick={handleLogout}

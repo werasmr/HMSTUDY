@@ -1,22 +1,19 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma';
-import { AuthRequest, authenticate, requireRole } from '../middleware/auth';
+import { AuthRequest, authenticate, requireRole, canAccessOrder } from '../middleware/auth';
 import {
-  findMatchingRequisite,
-  freezeTraderBalance,
-  getRequisiteType,
-  getRequisiteNumber,
   sendWebhook,
   confirmOrder,
-  expireOrder,
+  cancelOrder,
 } from '../services/matching';
-import { emitOrderUpdate, emitToUser } from '../lib/socket';
+import { emitOrderUpdate } from '../lib/socket';
 
-const traderRouter = Router();
-traderRouter.use(authenticate);
-traderRouter.use(requireRole('TRADER', 'ADMIN', 'MERCHANT'));
+const router = Router();
 
-traderRouter.get('/', async (req: AuthRequest, res: Response) => {
+router.use(authenticate);
+router.use(requireRole('TRADER', 'ADMIN', 'MERCHANT'));
+
+router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { type, status, search, page = '1', limit = '20', minAmount, maxAmount, dateFrom, dateTo } = req.query;
     const pageNum = parseInt(page as string);
@@ -67,14 +64,13 @@ traderRouter.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-traderRouter.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const order = await prisma.order.findFirst({
-      where: {
-        id: req.params.id,
-        ...(req.user!.role === 'TRADER' ? { traderId: req.user!.id } : {}),
-        ...(req.user!.role === 'MERCHANT' ? { merchantId: req.user!.id } : {}),
-      },
+    const allowed = await canAccessOrder(req.user!.id, req.user!.role, req.params.id);
+    if (!allowed) return res.status(404).json({ error: 'Order not found' });
+
+    const order = await prisma.order.findUnique({
+      where: { id: req.params.id },
       include: {
         requisite: { include: { device: true } },
         messages: {
@@ -92,11 +88,13 @@ traderRouter.get('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-traderRouter.post('/:id/confirm', async (req: AuthRequest, res: Response) => {
+router.post('/:id/confirm', requireRole('TRADER', 'ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
-    const order = await prisma.order.findFirst({
-      where: { id: req.params.id, traderId: req.user!.id },
-    });
+    const where = req.user!.role === 'ADMIN'
+      ? { id: req.params.id }
+      : { id: req.params.id, traderId: req.user!.id };
+
+    const order = await prisma.order.findFirst({ where });
     if (!order) return res.status(404).json({ error: 'Order not found' });
     if (!['WAITING_PAYMENT', 'PAID'].includes(order.status)) {
       return res.status(400).json({ error: 'Cannot confirm this order' });
@@ -110,39 +108,39 @@ traderRouter.post('/:id/confirm', async (req: AuthRequest, res: Response) => {
     res.json(updated);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to confirm order' });
+    res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to confirm order' });
   }
 });
 
-traderRouter.post('/:id/cancel', async (req: AuthRequest, res: Response) => {
+router.post('/:id/cancel', requireRole('TRADER', 'ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
-    const order = await prisma.order.findFirst({
-      where: { id: req.params.id, traderId: req.user!.id },
-    });
+    const where = req.user!.role === 'ADMIN'
+      ? { id: req.params.id }
+      : { id: req.params.id, traderId: req.user!.id };
+
+    const order = await prisma.order.findFirst({ where });
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    await expireOrder(order.id);
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { status: 'CANCELLED' },
-    });
-
+    await cancelOrder(order.id);
     const updated = await prisma.order.findUnique({ where: { id: order.id } });
     emitOrderUpdate(order.id, updated);
     await sendWebhook(order.id);
 
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to cancel order' });
+    res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to cancel order' });
   }
 });
 
-traderRouter.post('/:id/paid', async (req: AuthRequest, res: Response) => {
+router.post('/:id/paid', requireRole('TRADER'), async (req: AuthRequest, res: Response) => {
   try {
     const order = await prisma.order.findFirst({
-      where: { id: req.params.id },
+      where: { id: req.params.id, traderId: req.user!.id },
     });
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.status !== 'WAITING_PAYMENT') {
+      return res.status(400).json({ error: 'Order is not awaiting payment' });
+    }
 
     const updated = await prisma.order.update({
       where: { id: order.id },
@@ -155,4 +153,4 @@ traderRouter.post('/:id/paid', async (req: AuthRequest, res: Response) => {
   }
 });
 
-export default traderRouter;
+export default router;
