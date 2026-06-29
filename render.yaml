@@ -1,0 +1,48 @@
+# PrismaPay — деплой одной кнопкой на Render
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Backend API + Socket.io
+  - type: web
+    name: prismapay-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm run db:seed && node dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: prismapay-web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: USDT_RUB_RATE
+        value: "81.3"
+      - key: ORDER_EXPIRY_MINUTES
+        value: "15"
+      - key: UPLOAD_DIR
+        value: "./uploads"
+
+  # Frontend (React)
+  - type: web
+    name: prismapay-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: prismapay-api
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
