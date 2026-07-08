@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: proto
+    runtime: node
+    plan: free
+    branch: cursor/proto-landing-ab0a
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
