@@ -74,30 +74,21 @@ export async function createCompany(formData: FormData) {
 
   const slug = `${slugify(name)}-${crypto.randomUUID().slice(0, 8)}`;
 
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .insert({ name, slug })
-    .select("id")
-    .single();
+  const { data: companyId, error: companyError } = await supabase.rpc(
+    "create_company_with_owner",
+    {
+      company_name: name,
+      company_slug: slug,
+    },
+  );
 
-  if (companyError || !company) {
+  if (companyError || !companyId) {
     return { error: companyError?.message ?? "Не удалось создать компанию" };
-  }
-
-  const { error: memberError } = await supabase.from("company_members").insert({
-    company_id: company.id,
-    user_id: user.id,
-    role: "owner",
-    status: "active",
-  });
-
-  if (memberError) {
-    return { error: memberError.message };
   }
 
   await supabase.from("transaction_categories").insert(
     DEFAULT_CATEGORIES.map((category) => ({
-      company_id: company.id,
+      company_id: companyId,
       name: category.name,
       type: category.type,
       is_system: true,
