@@ -38,53 +38,61 @@ export function DataTable<T extends { id: string }>({
 }: DataTableProps<T>) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+      <div className="border-dashed p-12 text-center text-sm text-muted-foreground">
         {emptyMessage}
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column.key}>{column.label}</TableHead>
-            ))}
-            <TableHead className="w-28 text-right">Действия</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
-              {columns.map((column, columnIndex) => (
-                <TableCell key={column.key}>
-                  {column.render
-                    ? column.render(row)
-                    : detailHref && columnIndex === 0 ? (
-                        <Link href={detailHref(row)} className="font-medium hover:underline">
-                          {getCellValue(row as Record<string, unknown>, column.key)}
-                        </Link>
-                      ) : (
-                        getCellValue(row as Record<string, unknown>, column.key)
-                      )}
-                </TableCell>
-              ))}
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(row)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(row)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
+    <Table>
+      <TableHeader>
+        <TableRow className="bg-muted/50 hover:bg-muted/50">
+          {columns.map((column) => (
+            <TableHead key={column.key} className="font-semibold">
+              {column.label}
+            </TableHead>
           ))}
-        </TableBody>
-      </Table>
-    </div>
+          <TableHead className="w-28 text-right font-semibold">Действия</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.id} className="hover:bg-muted/30">
+            {columns.map((column, columnIndex) => (
+              <TableCell key={column.key}>
+                {column.render
+                  ? column.render(row)
+                  : detailHref && columnIndex === 0 ? (
+                      <Link
+                        href={detailHref(row)}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {getCellValue(row as Record<string, unknown>, column.key)}
+                      </Link>
+                    ) : (
+                      getCellValue(row as Record<string, unknown>, column.key)
+                    )}
+              </TableCell>
+            ))}
+            <TableCell className="text-right">
+              <div className="flex justify-end gap-1">
+                <Button variant="outline" size="icon-sm" onClick={() => onEdit(row)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => onDelete(row)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

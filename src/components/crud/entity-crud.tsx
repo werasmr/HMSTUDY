@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -16,6 +17,8 @@ import {
 import { DataForm } from "@/components/crud/data-form";
 import { DataTable } from "@/components/crud/data-table";
 import { FilterBar } from "@/components/crud/filter-bar";
+import { ModuleNav, type ModuleNavItem } from "@/components/layout/module-nav";
+import { PageHeader } from "@/components/layout/page-header";
 import type {
   ColumnConfig,
   CrudActionResult,
@@ -35,6 +38,7 @@ type EntityCrudProps<T extends { id: string }> = {
   searchPlaceholder?: string;
   detailHref?: (row: T) => string;
   headerActions?: React.ReactNode;
+  moduleNav?: ModuleNavItem[];
   formFooter?: (props: { formId: string }) => React.ReactNode;
   createAction: (formData: FormData) => Promise<CrudActionResult | void>;
   updateAction: (id: string, formData: FormData) => Promise<CrudActionResult | void>;
@@ -58,6 +62,7 @@ export function EntityCrud<T extends { id: string }>({
   searchPlaceholder,
   detailHref,
   headerActions,
+  moduleNav,
   formFooter,
   createAction,
   updateAction,
@@ -115,31 +120,37 @@ export function EntityCrud<T extends { id: string }>({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          {description && <p className="text-muted-foreground">{description}</p>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {headerActions}
-          <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Добавить
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={title}
+        description={description}
+        actions={
+          <>
+            {headerActions}
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить
+            </Button>
+          </>
+        }
+      >
+        {moduleNav && <ModuleNav items={moduleNav} />}
+      </PageHeader>
 
       {(filters.length > 0 || searchPlaceholder) && (
-        <FilterBar filters={filters} searchPlaceholder={searchPlaceholder} />
+        <Card className="p-4">
+          <FilterBar filters={filters} searchPlaceholder={searchPlaceholder} />
+        </Card>
       )}
 
-      <DataTable
+      <Card className="overflow-hidden p-0">
+        <DataTable
         rows={rows}
         columns={columns}
         onEdit={openEdit}
         onDelete={handleDelete}
         detailHref={detailHref}
-      />
+        />
+      </Card>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-md">

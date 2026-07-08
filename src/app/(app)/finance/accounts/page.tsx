@@ -11,6 +11,12 @@ import {
   bankAccountFields,
 } from "@/lib/crud/configs/finance";
 
+const FINANCE_MODULE_NAV = [
+  { href: "/finance", label: "Обзор" },
+  { href: "/finance/transactions", label: "Транзакции" },
+  { href: "/finance/accounts", label: "Счета", isActive: true },
+];
+
 export default async function AccountsPage() {
   const accounts = await listBankAccounts();
 
@@ -22,6 +28,7 @@ export default async function AccountsPage() {
         rows={accounts}
         fields={bankAccountFields}
         columns={bankAccountColumns}
+        moduleNav={FINANCE_MODULE_NAV}
         createAction={createBankAccount}
         updateAction={updateBankAccount}
         deleteAction={deleteBankAccount}

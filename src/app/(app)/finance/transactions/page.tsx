@@ -16,6 +16,12 @@ import {
   transactionFilters,
 } from "@/lib/crud/configs/finance";
 
+const FINANCE_MODULE_NAV = [
+  { href: "/finance", label: "Обзор" },
+  { href: "/finance/transactions", label: "Транзакции", isActive: true },
+  { href: "/finance/accounts", label: "Счета" },
+];
+
 type TransactionsPageProps = {
   searchParams: Promise<Record<string, string | undefined>>;
 };
@@ -42,6 +48,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
           category_id: categoryOptions,
         }}
         searchPlaceholder="Описание операции..."
+        moduleNav={FINANCE_MODULE_NAV}
         headerActions={
           <>
             <StatementUploadButton accounts={accountOptions} />

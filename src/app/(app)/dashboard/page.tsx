@@ -1,4 +1,7 @@
+import { Building2, Crown, LayoutDashboard } from "lucide-react";
 import { getUserContext } from "@/lib/auth";
+import { PageHeader } from "@/components/layout/page-header";
+import { StatCard } from "@/components/layout/stat-card";
 import {
   Card,
   CardContent,
@@ -12,43 +15,31 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Дашборд</h1>
-        <p className="text-muted-foreground">
-          Добро пожаловать, {ctx?.profile.full_name ?? ctx?.profile.email}
-        </p>
-      </div>
+      <PageHeader
+        title="Дашборд"
+        description={`Добро пожаловать, ${ctx?.profile.full_name ?? ctx?.profile.email}`}
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Компания</CardTitle>
-            <CardDescription>Текущее рабочее пространство</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{ctx?.company.name}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Тариф</CardTitle>
-            <CardDescription>Назначается вручную</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold uppercase">{ctx?.company.plan}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Роль</CardTitle>
-            <CardDescription>Доступ в системе</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">
-              {ctx?.membership.role === "owner" ? "Владелец" : "Сотрудник"}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Компания"
+          description="Текущее рабочее пространство"
+          value={ctx?.company.name}
+          icon={Building2}
+          tone="primary"
+        />
+        <StatCard
+          title="Тариф"
+          description="Назначается вручную"
+          value={<span className="uppercase">{ctx?.company.plan}</span>}
+          icon={Crown}
+        />
+        <StatCard
+          title="Роль"
+          description="Доступ в системе"
+          value={ctx?.membership.role === "owner" ? "Владелец" : "Сотрудник"}
+          icon={LayoutDashboard}
+        />
       </div>
 
       <Card>
