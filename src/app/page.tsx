@@ -9,7 +9,16 @@ export const metadata: Metadata = {
     "CRM, финансы, сотрудники и аналитика в одном месте. Попробуйте Proto бесплатно — меньше рутины, больше роста.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    return <LandingPage />;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
