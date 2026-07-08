@@ -30,21 +30,22 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    return supabaseResponse;
+  }
 
   const { pathname } = request.nextUrl;
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/register");
   const isPublicRoute =
-    isAuthRoute || pathname.startsWith("/auth/callback") || pathname === "/";
-
-  if (user && pathname === "/") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
+    isAuthRoute ||
+    pathname.startsWith("/auth/callback") ||
+    pathname === "/" ||
+    pathname === "/landing";
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
@@ -76,7 +77,7 @@ export async function updateSession(request: NextRequest) {
       .from("companies")
       .select("is_active")
       .eq("id", membership.company_id)
-      .single();
+      .maybeSingle();
 
     if (company && !company.is_active && pathname !== "/blocked") {
       const url = request.nextUrl.clone();
@@ -88,15 +89,23 @@ export async function updateSession(request: NextRequest) {
   if (user && pathname === "/onboarding") {
     const { data: membership } = await supabase
       .from("company_members")
-      .select("id")
+      .select("company_id")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
 
     if (membership) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
+      const { data: company } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("id", membership.company_id)
+        .maybeSingle();
+
+      if (company) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
     }
   }
 

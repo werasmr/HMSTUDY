@@ -7,6 +7,6 @@ export const metadata: Metadata = {
     "CRM, финансы, сотрудники и аналитика в одном месте. Попробуйте Proto бесплатно — меньше рутины, больше роста.",
 };
 
-export default function HomePage() {
+export default function LandingRoutePage() {
   return <LandingPage />;
 }

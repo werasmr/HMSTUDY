@@ -3,6 +3,8 @@ import { getUserContext } from "@/lib/auth";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { UserNav } from "@/components/layout/user-nav";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({
   children,
 }: {
