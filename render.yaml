@@ -6,6 +6,7 @@ services:
     branch: cursor/proto-landing-ab0a
     buildCommand: npm install && npm run build
     startCommand: npm start
+    healthCheckPath: /
     envVars:
       - key: NODE_VERSION
         value: "20"
