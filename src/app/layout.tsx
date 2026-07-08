@@ -14,8 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BizAuto — автоматизация малого бизнеса",
-  description: "SaaS-платформа для CRM, финансов, продуктов и аналитики",
+  title: {
+    default: "Proto — автоматизация малого бизнеса",
+    template: "%s | Proto",
+  },
+  description:
+    "CRM, финансы, команда и AI-ассистент для малого бизнеса. Автоматизируйте рутину с Proto.",
 };
 
 export default function RootLayout({

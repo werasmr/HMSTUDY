@@ -56,7 +56,7 @@ export function AppSidebar({ company }: AppSidebarProps) {
     <aside className="hidden w-64 shrink-0 flex-col border-r bg-card md:flex">
       <div className="flex h-16 items-center border-b px-6">
         <div>
-          <p className="text-sm font-semibold">BizAuto</p>
+          <p className="text-sm font-semibold">Proto</p>
           <p className="truncate text-xs text-muted-foreground">{company.name}</p>
         </div>
       </div>

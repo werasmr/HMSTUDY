@@ -1,4 +1,4 @@
-# BizAuto — SaaS автоматизация малого бизнеса
+# Proto — SaaS автоматизация малого бизнеса
 
 Монолит на **Next.js 15 + Supabase** (Auth, Postgres, Storage).
 

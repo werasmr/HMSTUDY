@@ -39,7 +39,7 @@ export function AuthForm({ mode, action }: AuthFormProps) {
         <CardTitle>{mode === "login" ? "Вход" : "Регистрация"}</CardTitle>
         <CardDescription>
           {mode === "login"
-            ? "Войдите в BizAuto для управления бизнесом"
+            ? "Войдите в Proto для управления бизнесом"
             : "Создайте аккаунт и настройте компанию"}
         </CardDescription>
       </CardHeader>
