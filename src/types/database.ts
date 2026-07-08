@@ -336,3 +336,31 @@ export type CrudActionResult = {
 };
 
 export type CrudFilters = Record<string, string | undefined>;
+
+export type ChatRole = "user" | "assistant" | "system" | "tool";
+
+export type ChatConversation = {
+  id: string;
+  company_id: string;
+  user_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  conversation_id: string;
+  role: ChatRole;
+  content: string | null;
+  tool_calls: Record<string, unknown> | null;
+  tool_results: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type AgentActionStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "executed"
+  | "failed";

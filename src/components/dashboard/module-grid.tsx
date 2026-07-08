@@ -94,10 +94,12 @@ function buildModules(overview: DashboardOverview): ModuleItem[] {
       status: "ready",
     },
     {
+      href: "/assistant",
       label: "AI-ассистент",
       description: "Единый чат по данным компании",
       icon: Bot,
-      status: "soon",
+      status: "ready",
+      metric: "Спросите про финансы и клиентов",
     },
   ];
 }
