@@ -27,6 +27,7 @@ const NAV_ITEMS: Array<
     ],
   },
   { href: "/products", label: "Продукты" },
+  { href: "/pricing", label: "Ценообразование" },
   {
     label: "Сотрудники",
     children: [

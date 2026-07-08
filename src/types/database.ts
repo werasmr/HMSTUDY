@@ -227,6 +227,21 @@ export type ComparisonRow = {
   }>;
 };
 
+export type PricingScenario = {
+  id: string;
+  company_id: string;
+  product_id: string | null;
+  cost: number;
+  margin_percent: number;
+  calculated_price: number;
+  ai_recommended_price: number | null;
+  ai_reasoning: string | null;
+  competitor_context: Record<string, unknown> | null;
+  created_by: string | null;
+  created_at: string;
+  products?: { name: string } | null;
+};
+
 export type CompanyPlan = "free" | "starter" | "pro";
 export type MemberRole = "owner" | "employee";
 export type MemberStatus = "active" | "invited" | "disabled";

@@ -84,3 +84,7 @@ export function pickFormData(formData: FormData, keys: string[]) {
     keys.map((key) => [key, String(formData.get(key) ?? "").trim()]),
   ) as Record<string, string>;
 }
+
+export function calculatePrice(cost: number, marginPercent: number) {
+  return Number((cost * (1 + marginPercent / 100)).toFixed(2));
+}
