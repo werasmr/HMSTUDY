@@ -5,8 +5,19 @@ import { usePathname } from "next/navigation";
 import type { Company } from "@/types/database";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
+const NAV_ITEMS: Array<
+  | { href: string; label: string }
+  | { label: string; children: Array<{ href: string; label: string }> }
+> = [
   { href: "/dashboard", label: "Дашборд" },
+  {
+    label: "CRM",
+    children: [
+      { href: "/crm/clients", label: "Клиенты" },
+      { href: "/crm/deals", label: "Сделки" },
+      { href: "/crm/tasks", label: "Задачи" },
+    ],
+  },
   { href: "/settings", label: "Настройки" },
 ];
 
@@ -26,20 +37,42 @@ export function AppSidebar({ company }: AppSidebarProps) {
         </div>
       </div>
       <nav className="flex-1 space-y-1 p-4">
-        {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "block rounded-md px-3 py-2 text-sm transition-colors",
-              pathname === item.href
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
+        {NAV_ITEMS.map((item) =>
+          "children" in item ? (
+            <div key={item.label} className="space-y-1">
+              <p className="px-3 py-1 text-xs font-medium uppercase text-muted-foreground">
+                {item.label}
+              </p>
+              {item.children.map((child) => (
+                <Link
+                  key={child.href}
+                  href={child.href}
+                  className={cn(
+                    "block rounded-md px-3 py-2 text-sm transition-colors",
+                    pathname.startsWith(child.href)
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {child.label}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "block rounded-md px-3 py-2 text-sm transition-colors",
+                pathname === item.href
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {item.label}
+            </Link>
+          ),
+        )}
       </nav>
       <div className="p-4">
         <div className="rounded-md border bg-muted/50 p-3 text-xs text-muted-foreground">

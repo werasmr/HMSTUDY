@@ -1,3 +1,84 @@
+export type ClientStatus = "lead" | "active" | "inactive" | "churned";
+export type ClientSegment = "vip" | "regular" | "low_value" | "unsegmented";
+export type DealStage =
+  | "lead"
+  | "qualified"
+  | "proposal"
+  | "negotiation"
+  | "won"
+  | "lost";
+export type TaskStatus = "todo" | "in_progress" | "done" | "canceled";
+export type TaskPriority = "low" | "medium" | "high";
+export type TaskEntityType = "client" | "deal" | "employee" | "product" | "none";
+export type InteractionType =
+  | "note"
+  | "call"
+  | "email"
+  | "meeting"
+  | "deal"
+  | "import";
+
+export type Client = {
+  id: string;
+  company_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: ClientStatus;
+  source: string | null;
+  total_purchases: number;
+  segment: ClientSegment;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  duplicate_of: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ClientInteraction = {
+  id: string;
+  company_id: string;
+  client_id: string;
+  type: InteractionType;
+  title: string | null;
+  content: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type Deal = {
+  id: string;
+  company_id: string;
+  client_id: string;
+  title: string;
+  stage: DealStage;
+  amount: number | null;
+  currency: string;
+  expected_close_date: string | null;
+  assigned_to: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  clients?: { name: string } | null;
+};
+
+export type Task = {
+  id: string;
+  company_id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  due_date: string | null;
+  assignee_id: string | null;
+  entity_type: TaskEntityType;
+  entity_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CompanyPlan = "free" | "starter" | "pro";
 export type MemberRole = "owner" | "employee";
 export type MemberStatus = "active" | "invited" | "disabled";
@@ -47,3 +128,48 @@ export type UserContext = {
   company: Company;
   membership: CompanyMember;
 };
+
+export type SelectOption = {
+  value: string;
+  label: string;
+};
+
+export type FieldType =
+  | "text"
+  | "email"
+  | "number"
+  | "textarea"
+  | "select"
+  | "date"
+  | "hidden";
+
+export type FieldConfig = {
+  key: string;
+  label: string;
+  type: FieldType;
+  required?: boolean;
+  options?: SelectOption[];
+  placeholder?: string;
+  hiddenInForm?: boolean;
+  hiddenInTable?: boolean;
+  readOnly?: boolean;
+};
+
+export type FilterConfig = {
+  key: string;
+  label: string;
+  options: SelectOption[];
+};
+
+export type ColumnConfig<T> = {
+  key: string;
+  label: string;
+  render?: (row: T) => React.ReactNode;
+};
+
+export type CrudActionResult = {
+  error?: string;
+  success?: boolean;
+};
+
+export type CrudFilters = Record<string, string | undefined>;
