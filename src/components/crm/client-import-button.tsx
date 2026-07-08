@@ -29,7 +29,7 @@ export function ClientImportButton() {
     <div className="relative">
       <Button variant="outline" onClick={() => setOpen((value) => !value)} disabled={pending}>
         <Upload className="mr-2 h-4 w-4" />
-        Импорт CSV
+        Импорт
       </Button>
       {open && (
         <form
@@ -37,9 +37,15 @@ export function ClientImportButton() {
           className="absolute right-0 z-10 mt-2 w-72 rounded-lg border bg-popover p-3 shadow-md"
         >
           <p className="mb-2 text-xs text-muted-foreground">
-            Колонки: name, email, phone, total_purchases. TODO: Excel, дедупликация Claude.
+            CSV или Excel (.xlsx). Колонки: name, email, phone, total_purchases.
           </p>
-          <Input ref={inputRef} type="file" name="file" accept=".csv,text/csv" required />
+          <Input
+            ref={inputRef}
+            type="file"
+            name="file"
+            accept=".csv,.xlsx,.xls,text/csv"
+            required
+          />
           <Button type="submit" size="sm" className="mt-2 w-full" disabled={pending}>
             Загрузить
           </Button>

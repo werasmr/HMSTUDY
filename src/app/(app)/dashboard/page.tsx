@@ -25,7 +25,8 @@ import { formatMoney } from "@/lib/crud/utils";
 import { cn } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const [ctx, overview] = await Promise.all([getUserContext(), getDashboardOverview()]);
+  const ctx = await getUserContext();
+  const overview = await getDashboardOverview();
 
   return (
     <div className="space-y-6">

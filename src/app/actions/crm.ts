@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getUserContext } from "@/lib/auth";
-import { computeSegment, parseCsv, pickFormData } from "@/lib/crud/utils";
+import { computeSegment, pickFormData } from "@/lib/crud/utils";
+import { parseSpreadsheetRows } from "@/lib/crm/spreadsheet";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import type { Client, CrudActionResult, CrudFilters, Deal, Task } from "@/types/database";
 
@@ -187,11 +188,10 @@ export async function importClientsCsv(formData: FormData): Promise<CrudActionRe
   const file = formData.get("file");
 
   if (!(file instanceof File)) {
-    return { error: "Выберите CSV файл" };
+    return { error: "Выберите CSV или Excel файл" };
   }
 
-  const text = await file.text();
-  const rows = parseCsv(text);
+  const rows = await parseSpreadsheetRows(file);
 
   if (rows.length === 0) {
     return { error: "Файл пустой или неверного формата" };
