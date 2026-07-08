@@ -95,13 +95,16 @@ export async function updateSession(request: NextRequest) {
       .maybeSingle();
 
     if (membership) {
-      const { data: company } = await supabase
-        .from("companies")
-        .select("id")
-        .eq("id", membership.company_id)
-        .maybeSingle();
+      const [{ data: company }, { data: profile }] = await Promise.all([
+        supabase
+          .from("companies")
+          .select("id")
+          .eq("id", membership.company_id)
+          .maybeSingle(),
+        supabase.from("profiles").select("id").eq("id", user.id).maybeSingle(),
+      ]);
 
-      if (company) {
+      if (company && profile) {
         const url = request.nextUrl.clone();
         url.pathname = "/dashboard";
         return NextResponse.redirect(url);
