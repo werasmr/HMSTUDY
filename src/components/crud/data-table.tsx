@@ -58,11 +58,11 @@ export function DataTable<T extends { id: string }>({
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.id}>
-              {columns.map((column) => (
+              {columns.map((column, columnIndex) => (
                 <TableCell key={column.key}>
                   {column.render
                     ? column.render(row)
-                    : detailHref && column.key === "name" ? (
+                    : detailHref && columnIndex === 0 ? (
                         <Link href={detailHref(row)} className="font-medium hover:underline">
                           {getCellValue(row as Record<string, unknown>, column.key)}
                         </Link>

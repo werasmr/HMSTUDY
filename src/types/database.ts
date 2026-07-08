@@ -157,6 +157,40 @@ export type Product = {
   updated_at: string;
 };
 
+export type EmployeeStatus = "active" | "inactive";
+
+export type Employee = {
+  id: string;
+  company_id: string;
+  user_id: string | null;
+  full_name: string;
+  position: string | null;
+  department: string | null;
+  hire_date: string | null;
+  status: EmployeeStatus;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EmployeeKpi = {
+  id: string;
+  company_id: string;
+  employee_id: string;
+  period: string;
+  metric_key: string;
+  metric_label: string;
+  value: number;
+  target: number | null;
+  created_at: string;
+};
+
+export type PerformanceRow = {
+  employee: Employee;
+  kpis: EmployeeKpi[];
+  efficiency: number | null;
+};
+
 export type CompanyPlan = "free" | "starter" | "pro";
 export type MemberRole = "owner" | "employee";
 export type MemberStatus = "active" | "invited" | "disabled";

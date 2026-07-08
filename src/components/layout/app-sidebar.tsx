@@ -27,6 +27,13 @@ const NAV_ITEMS: Array<
     ],
   },
   { href: "/products", label: "Продукты" },
+  {
+    label: "Сотрудники",
+    children: [
+      { href: "/employees", label: "Команда" },
+      { href: "/employees/performance", label: "Эффективность" },
+    ],
+  },
   { href: "/settings", label: "Настройки" },
 ];
 
@@ -60,7 +67,9 @@ export function AppSidebar({ company }: AppSidebarProps) {
                     "block rounded-md px-3 py-2 text-sm transition-colors",
                     child.href === "/finance"
                       ? pathname === "/finance"
-                      : pathname.startsWith(child.href)
+                      : child.href === "/employees"
+                        ? pathname === "/employees"
+                        : pathname.startsWith(child.href)
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
