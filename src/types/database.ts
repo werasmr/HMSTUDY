@@ -79,6 +79,65 @@ export type Task = {
   updated_at: string;
 };
 
+export type CategoryType = "income" | "expense";
+
+export type BankAccount = {
+  id: string;
+  company_id: string;
+  name: string;
+  currency: string;
+  created_at: string;
+};
+
+export type TransactionCategory = {
+  id: string;
+  company_id: string;
+  name: string;
+  type: CategoryType;
+  is_system: boolean;
+  created_at: string;
+};
+
+export type Transaction = {
+  id: string;
+  company_id: string;
+  bank_account_id: string | null;
+  category_id: string | null;
+  amount: number;
+  currency: string;
+  description: string;
+  transaction_date: string;
+  import_ref: string | null;
+  ai_categorized: boolean;
+  ai_confidence: number | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  bank_accounts?: { name: string } | null;
+  transaction_categories?: { name: string; type: CategoryType } | null;
+};
+
+export type FinanceSummary = {
+  income: number;
+  expense: number;
+  balance: number;
+  currency: string;
+  byCategory: Array<{
+    categoryId: string | null;
+    categoryName: string;
+    type: CategoryType | "unknown";
+    total: number;
+  }>;
+  periodFrom: string;
+  periodTo: string;
+};
+
+export type ParsedStatementRow = {
+  date: string;
+  amount: number;
+  description: string;
+  importRef: string;
+};
+
 export type CompanyPlan = "free" | "starter" | "pro";
 export type MemberRole = "owner" | "employee";
 export type MemberStatus = "active" | "invited" | "disabled";

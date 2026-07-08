@@ -18,6 +18,14 @@ const NAV_ITEMS: Array<
       { href: "/crm/tasks", label: "Задачи" },
     ],
   },
+  {
+    label: "Финансы",
+    children: [
+      { href: "/finance", label: "Обзор" },
+      { href: "/finance/transactions", label: "Транзакции" },
+      { href: "/finance/accounts", label: "Счета" },
+    ],
+  },
   { href: "/settings", label: "Настройки" },
 ];
 
@@ -49,7 +57,9 @@ export function AppSidebar({ company }: AppSidebarProps) {
                   href={child.href}
                   className={cn(
                     "block rounded-md px-3 py-2 text-sm transition-colors",
-                    pathname.startsWith(child.href)
+                    child.href === "/finance"
+                      ? pathname === "/finance"
+                      : pathname.startsWith(child.href)
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
