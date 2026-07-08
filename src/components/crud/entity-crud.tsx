@@ -129,7 +129,7 @@ export function EntityCrud<T extends { id: string }>({
         </div>
       </div>
 
-      {filters.length > 0 && (
+      {(filters.length > 0 || searchPlaceholder) && (
         <FilterBar filters={filters} searchPlaceholder={searchPlaceholder} />
       )}
 

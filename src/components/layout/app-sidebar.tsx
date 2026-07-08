@@ -34,6 +34,13 @@ const NAV_ITEMS: Array<
       { href: "/employees/performance", label: "Эффективность" },
     ],
   },
+  {
+    label: "Конкуренты",
+    children: [
+      { href: "/competitors", label: "Список" },
+      { href: "/competitors/compare", label: "Сравнение" },
+    ],
+  },
   { href: "/settings", label: "Настройки" },
 ];
 
@@ -69,7 +76,9 @@ export function AppSidebar({ company }: AppSidebarProps) {
                       ? pathname === "/finance"
                       : child.href === "/employees"
                         ? pathname === "/employees"
-                        : pathname.startsWith(child.href)
+                        : child.href === "/competitors"
+                          ? pathname === "/competitors"
+                          : pathname.startsWith(child.href)
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}

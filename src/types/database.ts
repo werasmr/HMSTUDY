@@ -191,6 +191,42 @@ export type PerformanceRow = {
   efficiency: number | null;
 };
 
+export type Competitor = {
+  id: string;
+  company_id: string;
+  name: string;
+  website: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CompetitorItem = {
+  id: string;
+  company_id: string;
+  competitor_id: string;
+  product_name: string;
+  price: number;
+  currency: string;
+  notes: string | null;
+  recorded_at: string;
+  created_at: string;
+  competitors?: { name: string } | null;
+};
+
+export type ComparisonRow = {
+  productName: string;
+  ourPrice: number | null;
+  ourProductId: string | null;
+  competitorPrices: Array<{
+    competitorId: string;
+    competitorName: string;
+    price: number | null;
+    currency: string;
+    itemId: string | null;
+  }>;
+};
+
 export type CompanyPlan = "free" | "starter" | "pro";
 export type MemberRole = "owner" | "employee";
 export type MemberStatus = "active" | "invited" | "disabled";
