@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BizAuto — SaaS автоматизация малого бизнеса
 
-## Getting Started
+Монолит на **Next.js 15 + Supabase** (Auth, Postgres, Storage).
 
-First, run the development server:
+## Стек
+
+- **Frontend/Backend:** Next.js 15 (App Router)
+- **БД + Auth:** Supabase (PostgreSQL, RLS)
+- **UI:** shadcn/ui + Tailwind CSS v4
+- **Деплой:** Vercel
+
+## Быстрый старт
+
+### 1. Supabase
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Установить CLI (уже в devDependencies)
+npx supabase login
+npx supabase link --project-ref <your-ref>
+
+# Применить миграцию
+npx supabase db push
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Или скопировать SQL из `supabase/migrations/20250708190000_initial_schema.sql` в Supabase SQL Editor.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2. Переменные окружения
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.example .env.local
+```
 
-## Learn More
+Заполните `NEXT_PUBLIC_SUPABASE_URL` и `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Запуск
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Откройте http://localhost:3000
 
-## Deploy on Vercel
+## Auth flow
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. `/register` — регистрация (Supabase Auth + auto profile trigger)
+2. `/onboarding` — создание компании (пользователь становится `owner`)
+3. `/dashboard` — защищённая зона
+4. `/settings` — профиль и настройки компании (пороги сегментации)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Ручной доступ / тариф
+
+Без Stripe/ЮKassa. Поля в `companies`:
+
+- `plan` — `free` | `starter` | `pro`
+- `is_active` — `true` / `false`
+
+Администратор меняет в Supabase Table Editor или SQL:
+
+```sql
+UPDATE companies SET plan = 'pro', is_active = true WHERE slug = 'my-company';
+```
+
+## Структура
+
+```
+src/
+  app/
+    (auth)/          # login, register
+    (app)/           # dashboard, settings (protected)
+    onboarding/      # company setup
+    actions/         # server actions
+  components/
+    auth/            # auth forms
+    layout/          # sidebar, user nav
+    ui/              # shadcn components
+  lib/
+    supabase/        # client, server, middleware helpers
+supabase/
+  migrations/        # full DB schema (all modules)
+```
+
+## Модули (статус)
+
+| Модуль | Статус |
+|--------|--------|
+| Схема БД | ✅ Миграция готова |
+| Auth + компания | ✅ MVP |
+| CRUD-конструктор | 🔜 Следующий этап |
+| CRM, Финансы, ... | 🔜 По плану |
+
+## Локальный Supabase (опционально)
+
+```bash
+npx supabase start
+npx supabase db reset
+```
+
+Studio: http://localhost:54323
+
+## Legacy
+
+Старый проект NETWORS перенесён в `_legacy/`.
