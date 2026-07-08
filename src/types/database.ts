@@ -138,6 +138,25 @@ export type ParsedStatementRow = {
   importRef: string;
 };
 
+export type ProductType = "product" | "service";
+export type ProductStatus = "active" | "archived";
+
+export type Product = {
+  id: string;
+  company_id: string;
+  name: string;
+  type: ProductType;
+  sku: string | null;
+  cost: number | null;
+  price: number | null;
+  margin_percent: number | null;
+  description: string | null;
+  status: ProductStatus;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CompanyPlan = "free" | "starter" | "pro";
 export type MemberRole = "owner" | "employee";
 export type MemberStatus = "active" | "invited" | "disabled";

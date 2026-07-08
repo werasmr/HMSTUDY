@@ -26,6 +26,7 @@ const NAV_ITEMS: Array<
       { href: "/finance/accounts", label: "Счета" },
     ],
   },
+  { href: "/products", label: "Продукты" },
   { href: "/settings", label: "Настройки" },
 ];
 

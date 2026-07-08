@@ -35,6 +35,7 @@ type EntityCrudProps<T extends { id: string }> = {
   searchPlaceholder?: string;
   detailHref?: (row: T) => string;
   headerActions?: React.ReactNode;
+  formFooter?: (props: { formId: string }) => React.ReactNode;
   createAction: (formData: FormData) => Promise<CrudActionResult | void>;
   updateAction: (id: string, formData: FormData) => Promise<CrudActionResult | void>;
   deleteAction: (id: string) => Promise<CrudActionResult | void>;
@@ -57,6 +58,7 @@ export function EntityCrud<T extends { id: string }>({
   searchPlaceholder,
   detailHref,
   headerActions,
+  formFooter,
   createAction,
   updateAction,
   deleteAction,
@@ -160,6 +162,7 @@ export function EntityCrud<T extends { id: string }>({
               values={editing ? rowToValues(editing as Record<string, unknown>, fields) : undefined}
               dynamicOptions={dynamicOptions}
             />
+            {formFooter?.({ formId })}
           </form>
 
           <SheetFooter>
