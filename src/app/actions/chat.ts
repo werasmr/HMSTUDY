@@ -2,54 +2,22 @@
 
 import { revalidatePath } from "next/cache";
 import { proposeAgentAction } from "@/app/actions/agent-actions";
-import { getDashboardOverview } from "@/app/actions/dashboard";
+import { getBusinessHealth } from "@/app/actions/business";
 import { getUserContext } from "@/lib/auth";
-import {
-  askAssistantWithClaude,
-  type BusinessSnapshot,
-} from "@/lib/claude/assistant";
+import { askExecutive, type ExecutiveRole } from "@/lib/ai/executive";
 import { createClient } from "@/lib/supabase/server";
 import type { ChatConversation, ChatMessage, CrudActionResult } from "@/types/database";
+
+const VALID_ROLES: ExecutiveRole[] = ["ceo", "cfo", "hr", "cmo"];
+
+function normalizeRole(role: string | null | undefined): ExecutiveRole {
+  return VALID_ROLES.includes(role as ExecutiveRole) ? (role as ExecutiveRole) : "ceo";
+}
 
 async function requireContext() {
   const ctx = await getUserContext();
   if (!ctx) throw new Error("Компания не найдена");
   return ctx;
-}
-
-async function buildSnapshot(): Promise<BusinessSnapshot> {
-  const ctx = await requireContext();
-  const overview = await getDashboardOverview();
-  const supabase = await createClient();
-  const month = new Date().toISOString().slice(0, 7);
-
-  const { data: topClients } = await supabase
-    .from("clients")
-    .select("name, total_purchases, segment")
-    .eq("company_id", ctx.company.id)
-    .is("duplicate_of", null)
-    .order("total_purchases", { ascending: false })
-    .limit(5);
-
-  return {
-    companyName: ctx.company.name,
-    currency: overview.finance.currency,
-    month,
-    clients: overview.counts.clients,
-    deals: overview.counts.deals,
-    openTasks: overview.counts.openTasks,
-    products: overview.counts.products,
-    employees: overview.counts.employees,
-    transactionsThisMonth: overview.counts.transactionsThisMonth,
-    income: overview.finance.income,
-    expense: overview.finance.expense,
-    balance: overview.finance.balance,
-    topClients: (topClients ?? []).map((client) => ({
-      name: client.name,
-      total_purchases: Number(client.total_purchases ?? 0),
-      segment: client.segment,
-    })),
-  };
 }
 
 export async function listConversations(): Promise<ChatConversation[]> {
@@ -94,7 +62,10 @@ export async function getConversationMessages(
   return (data ?? []) as ChatMessage[];
 }
 
-export async function createConversation(title?: string): Promise<ChatConversation | null> {
+export async function createConversation(
+  title?: string,
+  role?: string,
+): Promise<ChatConversation | null> {
   const ctx = await requireContext();
   const supabase = await createClient();
 
@@ -104,13 +75,33 @@ export async function createConversation(title?: string): Promise<ChatConversati
       company_id: ctx.company.id,
       user_id: ctx.profile.id,
       title: title ?? "Новый диалог",
+      ai_role: normalizeRole(role),
     })
     .select("*")
     .single();
 
   if (error) return null;
-  revalidatePath("/assistant");
+  revalidatePath("/chat");
   return data as ChatConversation;
+}
+
+export async function setConversationRole(
+  conversationId: string,
+  role: string,
+): Promise<CrudActionResult> {
+  const ctx = await requireContext();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("chat_conversations")
+    .update({ ai_role: normalizeRole(role) })
+    .eq("id", conversationId)
+    .eq("company_id", ctx.company.id)
+    .eq("user_id", ctx.profile.id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/chat");
+  return { success: true };
 }
 
 export async function sendChatMessage(
@@ -125,7 +116,7 @@ export async function sendChatMessage(
 
   const { data: conversation } = await supabase
     .from("chat_conversations")
-    .select("id, title")
+    .select("id, title, ai_role")
     .eq("id", conversationId)
     .eq("company_id", ctx.company.id)
     .eq("user_id", ctx.profile.id)
@@ -142,9 +133,10 @@ export async function sendChatMessage(
   if (userError) return { error: userError.message };
 
   const history = await getConversationMessages(conversationId);
-  const snapshot = await buildSnapshot();
+  const { snapshot } = await getBusinessHealth();
 
-  const reply = await askAssistantWithClaude(
+  const reply = await askExecutive(
+    normalizeRole(conversation.ai_role),
     history
       .filter((message) => message.role === "user" || message.role === "assistant")
       .map((message) => ({
@@ -193,7 +185,7 @@ export async function sendChatMessage(
     .update({ title, updated_at: new Date().toISOString() })
     .eq("id", conversationId);
 
-  revalidatePath("/assistant");
+  revalidatePath("/chat");
   return { success: true, reply };
 }
 
@@ -209,6 +201,6 @@ export async function deleteConversation(conversationId: string): Promise<CrudAc
     .eq("user_id", ctx.profile.id);
 
   if (error) return { error: error.message };
-  revalidatePath("/assistant");
+  revalidatePath("/chat");
   return { success: true };
 }

@@ -46,7 +46,7 @@ export async function proposeAgentAction(input: {
   });
 
   if (error) return { error: error.message };
-  revalidatePath("/assistant");
+  revalidatePath("/chat");
   return { success: true };
 }
 
@@ -119,7 +119,7 @@ export async function approveAgentAction(id: string): Promise<CrudActionResult> 
     })
     .eq("id", id);
 
-  revalidatePath("/assistant");
+  revalidatePath("/chat");
   revalidatePath("/crm/tasks");
   return { success: true };
 }
@@ -139,6 +139,6 @@ export async function rejectAgentAction(id: string): Promise<CrudActionResult> {
     .eq("status", "pending");
 
   if (error) return { error: error.message };
-  revalidatePath("/assistant");
+  revalidatePath("/chat");
   return { success: true };
 }

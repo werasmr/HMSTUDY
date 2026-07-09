@@ -8,19 +8,37 @@ import {
   createConversation,
   deleteConversation,
   sendChatMessage,
+  setConversationRole,
 } from "@/app/actions/chat";
+import { EXECUTIVE_ROLES, type ExecutiveRole } from "@/lib/ai/roles";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { ChatConversation, ChatMessage } from "@/types/database";
 
-const SUGGESTIONS = [
-  "Какая прибыль за этот месяц?",
-  "Сколько клиентов в базе?",
-  "Какие задачи открыты?",
-  "Краткая сводка по бизнесу",
-];
+const SUGGESTIONS: Record<ExecutiveRole, string[]> = {
+  ceo: [
+    "Как дела у бизнеса?",
+    "Какие главные проблемы сейчас?",
+    "Что сделать в первую очередь?",
+  ],
+  cfo: [
+    "Какая прибыль за этот месяц?",
+    "Куда уходят деньги?",
+    "Есть ли финансовые риски?",
+  ],
+  hr: [
+    "Кто из сотрудников отстаёт по KPI?",
+    "Как работает команда?",
+    "Кого стоит похвалить?",
+  ],
+  cmo: [
+    "Сколько клиентов в базе?",
+    "Какие сделки в работе?",
+    "Как увеличить продажи?",
+  ],
+};
 
 type ChatPanelProps = {
   conversations: ChatConversation[];
@@ -40,19 +58,33 @@ export function ChatPanel({
 
   const activeId = initialConversationId;
   const messages = initialMessages;
+  const activeConversation = conversations.find((c) => c.id === activeId) ?? null;
+  const activeRole = (activeConversation?.ai_role ?? "ceo") as ExecutiveRole;
+  const roleInfo =
+    EXECUTIVE_ROLES.find((role) => role.key === activeRole) ?? EXECUTIVE_ROLES[0];
 
   function refresh() {
     startTransition(() => router.refresh());
   }
 
   async function handleNewChat() {
-    const conversation = await createConversation();
+    const conversation = await createConversation(undefined, activeRole);
     if (!conversation) {
       toast.error("Не удалось создать диалог");
       return;
     }
-    router.push(`/assistant?c=${conversation.id}`);
+    router.push(`/chat?c=${conversation.id}`);
     router.refresh();
+  }
+
+  async function handleRoleChange(role: ExecutiveRole) {
+    if (!activeId || role === activeRole) return;
+    const result = await setConversationRole(activeId, role);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    refresh();
   }
 
   async function handleSend() {
@@ -79,7 +111,7 @@ export function ChatPanel({
       toast.error(result.error);
       return;
     }
-    router.push("/assistant");
+    router.push("/chat");
     refresh();
   }
 
@@ -109,8 +141,11 @@ export function ChatPanel({
               <button
                 type="button"
                 className="min-w-0 flex-1 truncate text-left text-sm"
-                onClick={() => router.push(`/assistant?c=${conversation.id}`)}
+                onClick={() => router.push(`/chat?c=${conversation.id}`)}
               >
+                <span className="mr-1.5 text-xs font-semibold uppercase text-primary/70">
+                  {conversation.ai_role || "ceo"}
+                </span>
                 {conversation.title ?? "Диалог"}
               </button>
               <Button
@@ -128,16 +163,35 @@ export function ChatPanel({
 
       <Card className="flex min-h-[560px] flex-col">
         <CardHeader className="border-b">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-primary/10 p-2 text-primary">
-              <Bot className="h-5 w-5" />
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-primary/10 p-2 text-primary">
+                <Bot className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base">{roleInfo.title}</CardTitle>
+                <p className="text-sm text-muted-foreground">{roleInfo.description}</p>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-base">Proto AI</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Ответы на основе данных вашей компании
-              </p>
-            </div>
+            {activeId && (
+              <div className="flex flex-wrap gap-1.5">
+                {EXECUTIVE_ROLES.map((role) => (
+                  <button
+                    key={role.key}
+                    type="button"
+                    onClick={() => void handleRoleChange(role.key)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                      role.key === activeRole
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-background hover:border-primary/30 hover:bg-primary/5",
+                    )}
+                  >
+                    {role.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </CardHeader>
 
@@ -157,7 +211,7 @@ export function ChatPanel({
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Примеры вопросов:</p>
                     <div className="flex flex-wrap gap-2">
-                      {SUGGESTIONS.map((suggestion) => (
+                      {SUGGESTIONS[activeRole].map((suggestion) => (
                         <button
                           key={suggestion}
                           type="button"
@@ -175,7 +229,7 @@ export function ChatPanel({
                   <div
                     key={item.id}
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                      "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
                       item.role === "user"
                         ? "ml-auto bg-primary text-primary-foreground"
                         : "bg-muted text-foreground",
@@ -191,7 +245,7 @@ export function ChatPanel({
                 <Textarea
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
-                  placeholder="Спросите про финансы, клиентов или задачи..."
+                  placeholder={`Спросите ${roleInfo.title} о вашем бизнесе...`}
                   rows={2}
                   className="min-h-[72px] resize-none"
                   onKeyDown={(event) => {

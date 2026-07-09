@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BUSINESS_TYPE_OPTIONS } from "@/lib/business-types";
 
 export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,24 @@ export default function OnboardingPage() {
             <div className="space-y-2">
               <Label htmlFor="name">Название компании</Label>
               <Input id="name" name="name" placeholder="ООО Ромашка" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="businessType">Тип бизнеса</Label>
+              <select
+                id="businessType"
+                name="businessType"
+                defaultValue="other"
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {BUSINESS_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                AI CEO подстроит KPI и рекомендации под вашу нишу.
+              </p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </CardContent>

@@ -4,6 +4,7 @@ import {
   Bot,
   Calculator,
   CheckSquare,
+  FileText,
   GitCompare,
   Handshake,
   Inbox,
@@ -26,8 +27,9 @@ export type NavItem = NavLink | NavGroup;
 
 export const APP_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
+  { href: "/chat", label: "AI CEO", icon: Bot },
+  { href: "/reports", label: "Отчёты", icon: FileText },
   { href: "/analytics", label: "Аналитика", icon: BarChart3 },
-  { href: "/assistant", label: "AI-ассистент", icon: Bot },
   {
     label: "Клиенты",
     children: [
@@ -76,7 +78,8 @@ export function isNavActive(pathname: string, href: string) {
   if (href === "/finance") return pathname === "/finance";
   if (href === "/employees") return pathname === "/employees";
   if (href === "/competitors") return pathname === "/competitors";
-  if (href === "/assistant") return pathname.startsWith("/assistant");
+  if (href === "/chat") return pathname.startsWith("/chat") || pathname.startsWith("/assistant");
+  if (href === "/reports") return pathname.startsWith("/reports");
   if (href === "/analytics") return pathname.startsWith("/analytics");
   if (href === "/inbox") return pathname === "/inbox";
   if (href === "/inbox/channels") return pathname.startsWith("/inbox/channels");
