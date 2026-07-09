@@ -271,6 +271,7 @@ export type Company = {
   slug: string;
   plan: CompanyPlan;
   is_active: boolean;
+  business_type: string;
   settings: CompanySettings;
   created_at: string;
   updated_at: string;
@@ -344,8 +345,19 @@ export type ChatConversation = {
   company_id: string;
   user_id: string;
   title: string | null;
+  ai_role: string;
   created_at: string;
   updated_at: string;
+};
+
+export type DailyReport = {
+  id: string;
+  company_id: string;
+  report_date: string;
+  content: string;
+  metrics: Record<string, unknown>;
+  generated_by: string | null;
+  created_at: string;
 };
 
 export type ChatMessage = {

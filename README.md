@@ -1,13 +1,31 @@
-# Proto — SaaS автоматизация малого бизнеса
+# Proto — Business OS для малого и среднего бизнеса
+
+> Не ещё одна CRM, а AI-операционный директор, который подключается к данным бизнеса и помогает владельцу принимать решения.
 
 Монолит на **Next.js 15 + Supabase** (Auth, Postgres, Storage).
 
 ## Стек
 
-- **Frontend/Backend:** Next.js 15 (App Router)
-- **БД + Auth:** Supabase (PostgreSQL, RLS)
+- **Frontend/Backend:** Next.js 15 (App Router, TypeScript, Tailwind CSS)
+- **БД + Auth:** Supabase (PostgreSQL, RLS, хранение чатов и отчётов)
+- **AI:** OpenAI GPT-4o-mini (AI CEO / CFO / HR / CMO, ежедневные отчёты); Anthropic Claude как fallback
 - **UI:** shadcn/ui + Tailwind CSS v4
-- **Деплой:** Render (см. `render.yaml`)
+- **Деплой:** Vercel (`vercel.json`) / Render (`render.yaml`)
+
+## Ключевые страницы MVP
+
+| Страница | Что делает |
+|----------|------------|
+| `/login` | Вход (Supabase Auth) |
+| `/dashboard` | Выручка, прибыль, сотрудники, проблемы бизнеса (AI-анализ) |
+| `/chat` | AI CEO — чат с ролями CEO / CFO / HR / CMO на данных компании |
+| `/reports` | Ежедневные управленческие отчёты от AI CEO |
+
+## Адаптация под нишу
+
+При онбординге выбирается тип бизнеса (ресторан, стоматология, салон красоты,
+агентство, e-commerce, недвижимость) — AI получает свой набор KPI и фокус
+рекомендаций для каждой ниши (`src/lib/business-types.ts`).
 
 ## Быстрый старт
 
@@ -86,6 +104,9 @@ supabase/
 |--------|--------|
 | Схема БД | ✅ Миграция готова |
 | Auth + компания | ✅ MVP |
+| AI CEO (роли CEO/CFO/HR/CMO, GPT-4o-mini) | ✅ MVP |
+| Ежедневные отчёты AI | ✅ MVP |
+| Тип бизнеса + KPI под нишу | ✅ MVP |
 | CRUD-конструктор | ✅ EntityCrud + configs |
 | CRM (клиенты, сделки, задачи) | ✅ MVP |
 | Финансы (выписки, транзакции, P&L) | ✅ MVP |

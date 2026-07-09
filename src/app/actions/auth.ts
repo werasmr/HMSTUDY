@@ -72,6 +72,7 @@ export async function createCompany(formData: FormData) {
     return { error: "Укажите название компании" };
   }
 
+  const businessType = String(formData.get("businessType") ?? "other").trim() || "other";
   const slug = `${slugify(name)}-${crypto.randomUUID().slice(0, 8)}`;
 
   const { data: companyId, error: companyError } = await supabase.rpc(
@@ -85,6 +86,11 @@ export async function createCompany(formData: FormData) {
   if (companyError || !companyId) {
     return { error: companyError?.message ?? "Не удалось создать компанию" };
   }
+
+  await supabase
+    .from("companies")
+    .update({ business_type: businessType })
+    .eq("id", companyId);
 
   await supabase.from("transaction_categories").insert(
     DEFAULT_CATEGORIES.map((category) => ({
@@ -108,6 +114,7 @@ export async function updateCompanySettings(formData: FormData) {
   }
 
   const name = String(formData.get("name") ?? "").trim();
+  const businessType = String(formData.get("businessType") ?? ctx.company.business_type ?? "other").trim();
   const currency = String(formData.get("currency") ?? "RUB").trim();
   const timezone = String(formData.get("timezone") ?? "Europe/Moscow").trim();
   const vip = Number(formData.get("segment_vip") ?? 100000);
@@ -118,6 +125,7 @@ export async function updateCompanySettings(formData: FormData) {
     .from("companies")
     .update({
       name,
+      business_type: businessType,
       settings: {
         ...ctx.company.settings,
         currency,
