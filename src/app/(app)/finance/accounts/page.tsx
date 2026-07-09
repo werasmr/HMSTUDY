@@ -24,7 +24,7 @@ export default async function AccountsPage() {
     <Suspense fallback={<div>Загрузка...</div>}>
       <EntityCrud
         title="Банковские счета"
-        description="Ручные счета для привязки выписок. TODO: прямые интеграции с банками."
+        description="Ручные счета для привязки выписок. Прямые банковские API — в следующих версиях."
         rows={accounts}
         fields={bankAccountFields}
         columns={bankAccountColumns}

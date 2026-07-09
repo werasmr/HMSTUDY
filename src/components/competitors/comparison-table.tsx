@@ -30,7 +30,7 @@ export function ComparisonTable({ rows, competitors, currency }: ComparisonTable
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Сравнение с конкурентами</h1>
           <p className="text-muted-foreground">
-            Сопоставление по названию товара/услуги. TODO: автопарсинг.
+            Сопоставление по названию товара/услуги. Автопарсинг — в следующих версиях.
           </p>
         </div>
         <Link href="/competitors" className="text-sm text-primary hover:underline">

@@ -44,7 +44,7 @@ export function CompetitorDetail({ competitor, items }: CompetitorDetailProps) {
 
       <EntityCrud
         title="Позиции конкурента"
-        description="TODO: автопарсинг сайтов конкурентов"
+        description="Цены и позиции конкурента. Автопарсинг — в следующих версиях."
         rows={items}
         fields={competitorItemFields}
         columns={competitorItemColumns}

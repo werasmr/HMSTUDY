@@ -3,6 +3,8 @@ import {
   getConversationMessages,
   listConversations,
 } from "@/app/actions/chat";
+import { listPendingAgentActions } from "@/app/actions/agent-actions";
+import { ActionQueue } from "@/components/assistant/action-queue";
 import { ChatPanel } from "@/components/assistant/chat-panel";
 import { PageHeader } from "@/components/layout/page-header";
 
@@ -15,6 +17,7 @@ export default async function AssistantPage({ searchParams }: AssistantPageProps
   let conversationId = params.c ?? null;
 
   const conversations = await listConversations();
+  const pendingActions = await listPendingAgentActions();
 
   if (!conversationId && conversations.length > 0) {
     conversationId = conversations[0].id;
@@ -35,6 +38,8 @@ export default async function AssistantPage({ searchParams }: AssistantPageProps
         title="AI-ассистент"
         description="Задавайте вопросы о финансах, клиентах и задачах — ответы строятся на данных вашей компании."
       />
+
+      <ActionQueue actions={pendingActions} />
 
       <ChatPanel
         conversations={conversations}
