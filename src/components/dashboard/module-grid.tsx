@@ -1,12 +1,14 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  BarChart3,
   Bot,
   Calculator,
   CheckSquare,
+  Inbox,
   Package,
+  Share2,
   Target,
-  TrendingUp,
   Users,
   UsersRound,
   Wallet,
@@ -33,6 +35,21 @@ function buildModules(overview: DashboardOverview): ModuleItem[] {
 
   return [
     {
+      href: "/analytics",
+      label: "Аналитика",
+      description: "CRM + финансы + команда в одном месте",
+      icon: BarChart3,
+      status: "ready",
+    },
+    {
+      href: "/assistant",
+      label: "AI-ассистент",
+      description: "Чат и действия с подтверждением",
+      icon: Bot,
+      status: "ready",
+      metric: "Спросите про финансы и клиентов",
+    },
+    {
       href: "/crm/clients",
       label: "CRM",
       description: "Клиенты, сделки и задачи",
@@ -47,6 +64,20 @@ function buildModules(overview: DashboardOverview): ModuleItem[] {
       icon: Wallet,
       status: "ready",
       metric: `${counts.transactionsThisMonth} операций в этом месяце`,
+    },
+    {
+      href: "/inbox",
+      label: "Инбокс",
+      description: "Сообщения и каналы связи",
+      icon: Inbox,
+      status: "ready",
+    },
+    {
+      href: "/smm",
+      label: "SMM",
+      description: "Планирование и публикация постов",
+      icon: Share2,
+      status: "ready",
     },
     {
       href: "/products",
@@ -86,21 +117,6 @@ function buildModules(overview: DashboardOverview): ModuleItem[] {
       status: "ready",
       metric: counts.openTasks > 0 ? `${counts.openTasks} открытых` : "Нет открытых",
     },
-    {
-      href: "/employees/performance",
-      label: "Аналитика",
-      description: "Таблица эффективности команды",
-      icon: TrendingUp,
-      status: "ready",
-    },
-    {
-      href: "/assistant",
-      label: "AI-ассистент",
-      description: "Единый чат по данным компании",
-      icon: Bot,
-      status: "ready",
-      metric: "Спросите про финансы и клиентов",
-    },
   ];
 }
 
@@ -116,7 +132,7 @@ export function ModuleGrid({ overview }: ModuleGridProps) {
       <CardHeader>
         <CardTitle>Модули Proto</CardTitle>
         <CardDescription>
-          Все основные разделы уже доступны. Нажмите на карточку, чтобы перейти.
+          Все разделы платформы доступны. Нажмите на карточку, чтобы перейти.
         </CardDescription>
       </CardHeader>
       <CardContent>

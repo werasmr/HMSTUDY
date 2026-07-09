@@ -364,3 +364,82 @@ export type AgentActionStatus =
   | "rejected"
   | "executed"
   | "failed";
+
+export type ChannelType = "telegram";
+export type ChannelStatus = "active" | "disabled" | "error";
+export type MessageDirection = "inbound" | "outbound";
+export type MessageStatus = "new" | "draft_ready" | "approved" | "sent" | "archived";
+export type SocialPlatform = "telegram";
+export type PostStatus = "draft" | "scheduled" | "published" | "failed";
+
+export type Channel = {
+  id: string;
+  company_id: string;
+  type: ChannelType;
+  name: string;
+  config: Record<string, unknown>;
+  status: ChannelStatus;
+  created_at: string;
+};
+
+export type InboxMessage = {
+  id: string;
+  company_id: string;
+  channel_id: string;
+  client_id: string | null;
+  external_id: string | null;
+  direction: MessageDirection;
+  from_contact: string;
+  subject: string | null;
+  body: string;
+  status: MessageStatus;
+  ai_draft: string | null;
+  approved_by: string | null;
+  sent_at: string | null;
+  received_at: string;
+  created_at: string;
+  channels?: { name: string } | null;
+  clients?: { name: string } | null;
+};
+
+export type SocialAccount = {
+  id: string;
+  company_id: string;
+  platform: SocialPlatform;
+  name: string;
+  config: Record<string, unknown>;
+  status: ChannelStatus;
+  created_at: string;
+};
+
+export type SocialPost = {
+  id: string;
+  company_id: string;
+  social_account_id: string | null;
+  content: string;
+  media_urls: string[] | null;
+  scheduled_at: string | null;
+  published_at: string | null;
+  status: PostStatus;
+  external_post_id: string | null;
+  ai_generated: boolean;
+  error_message: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  social_accounts?: { name: string } | null;
+};
+
+export type AgentAction = {
+  id: string;
+  company_id: string;
+  conversation_id: string | null;
+  requested_by: string;
+  action_type: string;
+  payload: Record<string, unknown>;
+  preview: string | null;
+  status: AgentActionStatus;
+  result: Record<string, unknown> | null;
+  created_at: string;
+  resolved_at: string | null;
+};

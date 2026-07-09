@@ -1,14 +1,17 @@
 import {
   ArrowLeftRight,
+  BarChart3,
   Bot,
   Calculator,
   CheckSquare,
   GitCompare,
   Handshake,
+  Inbox,
   Landmark,
   LayoutDashboard,
   Package,
   Settings,
+  Share2,
   Target,
   TrendingUp,
   Users,
@@ -23,6 +26,7 @@ export type NavItem = NavLink | NavGroup;
 
 export const APP_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
+  { href: "/analytics", label: "Аналитика", icon: BarChart3 },
   { href: "/assistant", label: "AI-ассистент", icon: Bot },
   {
     label: "CRM",
@@ -56,6 +60,15 @@ export const APP_NAV_ITEMS: NavItem[] = [
       { href: "/competitors/compare", label: "Сравнение", icon: GitCompare },
     ],
   },
+  {
+    label: "Маркетинг",
+    children: [
+      { href: "/inbox", label: "Инбокс", icon: Inbox },
+      { href: "/inbox/channels", label: "Каналы", icon: Inbox },
+      { href: "/smm", label: "SMM", icon: Share2 },
+      { href: "/smm/accounts", label: "SMM-аккаунты", icon: Share2 },
+    ],
+  },
   { href: "/settings", label: "Настройки", icon: Settings },
 ];
 
@@ -64,5 +77,10 @@ export function isNavActive(pathname: string, href: string) {
   if (href === "/employees") return pathname === "/employees";
   if (href === "/competitors") return pathname === "/competitors";
   if (href === "/assistant") return pathname.startsWith("/assistant");
+  if (href === "/analytics") return pathname.startsWith("/analytics");
+  if (href === "/inbox") return pathname === "/inbox";
+  if (href === "/inbox/channels") return pathname.startsWith("/inbox/channels");
+  if (href === "/smm") return pathname === "/smm";
+  if (href === "/smm/accounts") return pathname.startsWith("/smm/accounts");
   return pathname === href || pathname.startsWith(`${href}/`);
 }

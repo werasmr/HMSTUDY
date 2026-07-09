@@ -26,7 +26,7 @@ export default async function CompetitorsPage({ searchParams }: CompetitorsPageP
     <Suspense fallback={<div>Загрузка...</div>}>
       <EntityCrud
         title="Конкуренты"
-        description="Ручной ввод цен конкурентов. TODO: автопарсинг."
+        description="Ручной ввод цен конкурентов. Автопарсинг сайтов — в следующих версиях."
         rows={competitors}
         fields={competitorFields}
         columns={competitorColumns}

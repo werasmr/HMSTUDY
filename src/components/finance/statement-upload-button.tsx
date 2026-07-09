@@ -52,7 +52,7 @@ export function StatementUploadButton({ accounts }: StatementUploadButtonProps) 
         >
           <p className="mb-3 text-xs text-muted-foreground">
             CSV или Excel. Колонки: дата, сумма (или дебет/кредит), описание.
-            TODO: прямые банковские API.
+            Прямые банковские API — в следующих версиях.
           </p>
           <div className="space-y-2">
             <Label htmlFor="bank_account_id">Счёт</Label>

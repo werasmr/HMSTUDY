@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { proposeAgentAction } from "@/app/actions/agent-actions";
 import { getDashboardOverview } from "@/app/actions/dashboard";
 import { getUserContext } from "@/lib/auth";
 import {
@@ -160,6 +161,27 @@ export async function sendChatMessage(
   });
 
   if (assistantError) return { error: assistantError.message };
+
+  const lower = trimmed.toLowerCase();
+  if (lower.includes("создай задач") || lower.includes("создать задач")) {
+    const titleMatch = trimmed.match(/[«"'](.+?)[»"']|задач[уеи]?\s+(.+)/i);
+    const title = (titleMatch?.[1] ?? titleMatch?.[2] ?? "Задача из AI-чата").slice(0, 120);
+    await proposeAgentAction({
+      actionType: "create_task",
+      preview: `Создать задачу: ${title}`,
+      payload: { title, description: `Создано из чата: ${trimmed}` },
+      conversationId,
+    });
+  }
+
+  if (lower.includes("создай пост") || lower.includes("напиши пост")) {
+    await proposeAgentAction({
+      actionType: "create_social_post",
+      preview: `Создать SMM-пост: ${trimmed.slice(0, 80)}`,
+      payload: { content: trimmed },
+      conversationId,
+    });
+  }
 
   const title =
     conversation.title === "Новый диалог"
