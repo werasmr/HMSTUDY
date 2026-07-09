@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { COMPARISON_ROWS, PLANS } from "@/components/landing/data";
+import { Reveal } from "@/components/landing/reveal";
 import { Section } from "@/components/landing/section";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -58,46 +59,52 @@ export function PricingSection() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
-          {PLANS.map((plan) => {
+          {PLANS.map((plan, index) => {
             const price = yearly ? plan.yearly : plan.monthly;
             return (
-              <Card
-                key={plan.id}
-                className={cn(
-                  "relative transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
-                  plan.highlighted && "border-primary shadow-md",
-                )}
-              >
-                {plan.highlighted && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">Рекомендуем</Badge>
-                )}
-                <CardHeader>
-                  <CardTitle>{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                  <p className="pt-2 text-3xl font-bold">
-                    {price === 0 ? "0 ₽" : `${price.toLocaleString("ru-RU")} ₽`}
-                    <span className="text-sm font-normal text-muted-foreground">/мес</span>
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex gap-2">
-                        <span className="text-primary">✓</span>
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-                <CardFooter>
-                  <Link
-                    href="/register"
-                    className={cn(buttonVariants({ variant: plan.highlighted ? "default" : "outline" }), "w-full")}
-                  >
-                    {plan.cta}
-                  </Link>
-                </CardFooter>
-              </Card>
+              <Reveal key={plan.id} delay={index * 100}>
+                <Card
+                  className={cn(
+                    "relative h-full transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg",
+                    plan.highlighted && "border-primary shadow-md",
+                  )}
+                >
+                  {plan.highlighted && (
+                    <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 animate-fade-in">
+                      Рекомендуем
+                    </Badge>
+                  )}
+                  <CardHeader>
+                    <CardTitle>{plan.name}</CardTitle>
+                    <CardDescription>{plan.description}</CardDescription>
+                    <p key={`${plan.id}-${yearly}`} className="animate-fade-in pt-2 text-3xl font-bold">
+                      {price === 0 ? "0 ₽" : `${price.toLocaleString("ru-RU")} ₽`}
+                      <span className="text-sm font-normal text-muted-foreground">/мес</span>
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 text-sm">
+                      {plan.features.map((feature) => (
+                        <li key={feature} className="flex gap-2">
+                          <span className="text-primary">✓</span>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                  <CardFooter>
+                    <Link
+                      href="/register"
+                      className={cn(
+                        buttonVariants({ variant: plan.highlighted ? "default" : "outline" }),
+                        "w-full transition-transform hover:scale-[1.03]",
+                      )}
+                    >
+                      {plan.cta}
+                    </Link>
+                  </CardFooter>
+                </Card>
+              </Reveal>
             );
           })}
         </div>

@@ -5,6 +5,7 @@ import { Section } from "@/components/landing/section";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAnimatedNumber } from "@/hooks/use-animated-number";
 
 export function SavingsCalculatorSection() {
   const [employees, setEmployees] = useState(5);
@@ -18,6 +19,9 @@ export function SavingsCalculatorSection() {
     const moneySaved = hoursSaved * 1200;
     return { hoursSaved, moneySaved };
   }, [employees, clients, hoursPerWeek]);
+
+  const animatedHours = useAnimatedNumber(result.hoursSaved);
+  const animatedMoney = useAnimatedNumber(result.moneySaved);
 
   return (
     <Section className="bg-muted/30 px-4 py-20 md:px-6">
@@ -71,15 +75,15 @@ export function SavingsCalculatorSection() {
               />
             </div>
 
-            <div className="grid gap-4 rounded-xl border bg-background p-6 sm:grid-cols-2">
-              <div>
+            <div className="grid gap-4 rounded-xl border bg-gradient-to-br from-primary/5 to-transparent p-6 sm:grid-cols-2">
+              <div className="transition-transform duration-300 hover:scale-[1.03]">
                 <p className="text-sm text-muted-foreground">Экономия времени</p>
-                <p className="text-3xl font-bold">{result.hoursSaved} ч/мес</p>
+                <p className="text-3xl font-bold tabular-nums">{animatedHours} ч/мес</p>
               </div>
-              <div>
+              <div className="transition-transform duration-300 hover:scale-[1.03]">
                 <p className="text-sm text-muted-foreground">Экономия денег</p>
-                <p className="text-3xl font-bold">
-                  {result.moneySaved.toLocaleString("ru-RU")} ₽
+                <p className="text-3xl font-bold tabular-nums">
+                  {animatedMoney.toLocaleString("ru-RU")} ₽
                 </p>
               </div>
             </div>

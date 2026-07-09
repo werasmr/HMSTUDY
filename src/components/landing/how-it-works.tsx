@@ -35,9 +35,9 @@ export function HowItWorksSection() {
                 <div className="mb-2 flex items-center gap-3">
                   <span
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
+                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-all duration-300",
                       activeStep === index
-                        ? "bg-primary text-primary-foreground"
+                        ? "scale-110 bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground",
                     )}
                   >
@@ -50,7 +50,7 @@ export function HowItWorksSection() {
             ))}
           </div>
 
-          <div className="transition-all duration-500">
+          <div key={activeStep} className="animate-fade-in-up transition-all duration-500">
             <StepVisual visual={step.visual} />
           </div>
         </div>

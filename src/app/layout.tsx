@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: "%s | Proto",
   },
   description:
-    "CRM, финансы, команда и AI-ассистент для малого бизнеса. Автоматизируйте рутину с Proto.",
+    "Финансы, клиенты, команда и AI-ассистент для малого бизнеса. Автоматизируйте рутину с Proto.",
 };
 
 export default function RootLayout({

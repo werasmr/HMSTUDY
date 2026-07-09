@@ -7,7 +7,7 @@ export const NAV_LINKS = [
 
 export const HERO_TABS = [
   { id: "finance", label: "Финансы" },
-  { id: "crm", label: "CRM" },
+  { id: "crm", label: "Клиенты" },
   { id: "employees", label: "Сотрудники" },
   { id: "analytics", label: "Аналитика" },
 ] as const;
@@ -17,8 +17,8 @@ export type HeroTabId = (typeof HERO_TABS)[number]["id"];
 export const FEATURES = [
   {
     id: "crm",
-    title: "CRM и база клиентов",
-    summary: "Клиенты, сделки, задачи и импорт CSV в одном месте.",
+    title: "Клиенты и сделки",
+    summary: "Один из модулей автоматизации: клиенты, сделки, задачи, импорт CSV.",
     details:
       "Ведите воронку от лида до сделки, храните историю контактов, сегментируйте базу по сумме покупок и импортируйте клиентов из таблиц.",
     highlights: ["Воронка сделок", "Карточка клиента", "Импорт CSV", "Сегментация"],
@@ -131,7 +131,7 @@ export const PLANS = [
     monthly: 0,
     yearly: 0,
     description: "Для старта и знакомства с платформой",
-    features: ["1 пользователь", "CRM до 100 клиентов", "Базовый дашборд", "AI-лимит 20 запросов/мес"],
+    features: ["1 пользователь", "База до 100 клиентов", "Базовый дашборд", "AI-лимит 20 запросов/мес"],
     cta: "Начать бесплатно",
     highlighted: false,
   },
@@ -171,7 +171,7 @@ export const PLANS = [
 
 export const COMPARISON_ROWS = [
   { feature: "Пользователи", free: "1", starter: "5", pro: "∞" },
-  { feature: "CRM клиенты", free: "100", starter: "5 000", pro: "∞" },
+  { feature: "Клиентов в базе", free: "100", starter: "5 000", pro: "∞" },
   { feature: "Финансы + P&L", free: "✓", starter: "✓", pro: "✓" },
   { feature: "Импорт выписок", free: "—", starter: "✓", pro: "✓" },
   { feature: "AI-ассистент", free: "20/мес", starter: "500/мес", pro: "∞" },

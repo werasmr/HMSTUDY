@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/landing-page";
 
 export const metadata: Metadata = {
-  title: "Proto — AI-платформа для малого бизнеса",
+  title: "Proto — AI-инструмент автоматизации бизнеса",
   description:
-    "CRM, финансы, сотрудники и аналитика в одном месте. Попробуйте Proto бесплатно — меньше рутины, больше роста.",
+    "Финансы, клиенты, сотрудники, цены и соцсети в одном месте. Попробуйте Proto бесплатно — меньше рутины, больше роста.",
 };
 
 export default function HomePage() {

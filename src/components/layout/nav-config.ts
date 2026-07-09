@@ -29,7 +29,7 @@ export const APP_NAV_ITEMS: NavItem[] = [
   { href: "/analytics", label: "Аналитика", icon: BarChart3 },
   { href: "/assistant", label: "AI-ассистент", icon: Bot },
   {
-    label: "CRM",
+    label: "Клиенты",
     children: [
       { href: "/crm/clients", label: "Клиенты", icon: Users },
       { href: "/crm/deals", label: "Сделки", icon: Handshake },
